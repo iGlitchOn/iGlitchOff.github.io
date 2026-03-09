@@ -1,1 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>iglitchoff · KickStats Dashboard</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-avatar" id="sidebarAvatar">IG</div>
+      <div class="logo-info">
+        <span class="logo-name">iglitchoff</span>
+        <span class="logo-platform">kick.com</span>
+      </div>
+    </div>
+    <div class="live-indicator" id="liveIndicator" style="display:none">
+      <span class="live-dot"></span> EN VIVO
+    </div>
+    <ul class="nav-links">
+      <li><a href="index.html" class="active"><span>📊</span> Dashboard</a></li>
+      <li><a href="pages/streams.html"><span>🎬</span> Streams</a></li>
+      <li><a href="pages/followers.html"><span>👥</span> Seguidores</a></li>
+      <li><a href="pages/viewers.html"><span>👁</span> Viewers</a></li>
+      <li><a href="pages/schedule.html"><span>🗓</span> Horario</a></li>
+      <li><a href="pages/stream-detail.html"><span>📈</span> Por Stream</a></li>
+    </ul>
+    <div class="sidebar-footer">
+      <button class="btn-connect" id="btnConnect" onclick="openAuthModal()">🔗 Conectar Kick</button>
+      <div class="last-sync" id="lastSync">Sin sincronizar</div>
+    </div>
+  </nav>
 
+  <!-- MAIN -->
+  <main class="main-content">
+    <header class="page-header">
+      <div class="header-left">
+        <h1 class="page-title">Dashboard <span id="liveTimerBadge" class="live-timer-badge" style="display:none">🔴 <span id="liveTimerVal">00:00:00</span></span></h1>
+        <p class="page-subtitle">Estadísticas de tu canal en tiempo real</p>
+      </div>
+      <div class="header-right">
+        <select class="period-select" id="periodSelect" onchange="loadDashboard()">
+          <option value="7">Últimos 7 días</option>
+          <option value="30" selected>Últimos 30 días</option>
+          <option value="90">Últimos 90 días</option>
+          <option value="365">Último año</option>
+          <option value="all">Todo el tiempo</option>
+        </select>
+        <button class="btn-refresh" onclick="syncNow()">↺ Sync</button>
+      </div>
+    </header>
+
+    <!-- ALERT BANNER -->
+    <div class="alert-banner" id="alertBanner" style="display:none">
+      <span id="alertMsg"></span>
+      <button onclick="document.getElementById('alertBanner').style.display='none'">✕</button>
+    </div>
+
+    <!-- LIVE STREAM CARD -->
+    <div class="live-stream-card" id="liveStreamCard" style="display:none">
+      <div class="live-stream-header">
+        <span class="live-badge-big">🔴 EN VIVO</span>
+        <span id="liveStreamTitle" class="live-stream-title">—</span>
+        <span id="liveStreamCategory" class="live-category-badge">—</span>
+      </div>
+      <div class="live-metrics">
+        <div class="live-metric"><span class="lm-val" id="liveViewers">0</span><span class="lm-lab">Viewers</span></div>
+        <div class="live-metric"><span class="lm-val" id="liveDuration">00:00</span><span class="lm-lab">Duración</span></div>
+        <div class="live-metric"><span class="lm-val" id="livePeak">0</span><span class="lm-lab">Peak hoy</span></div>
+      </div>
+    </div>
+
+    <!-- STAT CARDS -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card" id="scFollowers">
+        <div class="sc-icon">👥</div>
+        <div class="sc-body">
+          <div class="sc-val" id="valFollowers">—</div>
+          <div class="sc-lab">Seguidores</div>
+          <div class="sc-delta" id="deltaFollowers"></div>
+        </div>
+      </div>
+      <div class="stat-card" id="scPeakViewers">
+        <div class="sc-icon">🏆</div>
+        <div class="sc-body">
+          <div class="sc-val" id="valPeak">—</div>
+          <div class="sc-lab">Peak Viewers</div>
+          <div class="sc-delta" id="deltaPeak"></div>
+        </div>
+      </div>
+      <div class="stat-card" id="scAvgViewers">
+        <div class="sc-icon">👁</div>
+        <div class="sc-body">
+          <div class="sc-val" id="valAvg">—</div>
+          <div class="sc-lab">Avg Viewers</div>
+          <div class="sc-delta" id="deltaAvg"></div>
+        </div>
+      </div>
+      <div class="stat-card" id="scHours">
+        <div class="sc-icon">⏱</div>
+        <div class="sc-body">
+          <div class="sc-val" id="valHours">—</div>
+          <div class="sc-lab">Horas Streameadas</div>
+          <div class="sc-delta" id="deltaHours"></div>
+        </div>
+      </div>
+      <div class="stat-card" id="scStreams">
+        <div class="sc-icon">🎬</div>
+        <div class="sc-body">
+          <div class="sc-val" id="valStreams">—</div>
+          <div class="sc-lab">Streams</div>
+          <div class="sc-delta" id="deltaStreams"></div>
+        </div>
+      </div>
+      <div class="stat-card" id="scGoal">
+        <div class="sc-icon">🎯</div>
+        <div class="sc-body">
+          <div class="sc-val" id="valGoal">—</div>
+          <div class="sc-lab">Meta 1K</div>
+          <div class="goal-bar-wrap"><div class="goal-bar" id="goalBar"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHARTS ROW 1 -->
+    <div class="charts-row">
+      <div class="chart-card chart-large">
+        <div class="chart-header">
+          <h3>📈 Crecimiento de Seguidores</h3>
+          <div class="chart-tabs" id="followerTabs">
+            <button class="ct-btn active" onclick="switchFollowerChart('daily',this)">Diario</button>
+            <button class="ct-btn" onclick="switchFollowerChart('weekly',this)">Semanal</button>
+            <button class="ct-btn" onclick="switchFollowerChart('monthly',this)">Mensual</button>
+          </div>
+        </div>
+        <canvas id="chartFollowers" height="100"></canvas>
+      </div>
+      <div class="chart-card chart-small">
+        <div class="chart-header"><h3>🍕 Categorías</h3></div>
+        <canvas id="chartCategories" height="160"></canvas>
+      </div>
+    </div>
+
+    <!-- CHARTS ROW 2 -->
+    <div class="charts-row">
+      <div class="chart-card chart-medium">
+        <div class="chart-header">
+          <h3>👁 Viewers por Stream</h3>
+        </div>
+        <canvas id="chartViewers" height="110"></canvas>
+      </div>
+      <div class="chart-card chart-medium">
+        <div class="chart-header"><h3>⏱ Duración por Stream</h3></div>
+        <canvas id="chartDuration" height="110"></canvas>
+      </div>
+    </div>
+
+    <!-- CHARTS ROW 3 - DAYS OF WEEK -->
+    <div class="charts-row">
+      <div class="chart-card chart-full">
+        <div class="chart-header"><h3>🗓 Actividad por Día de la Semana</h3></div>
+        <canvas id="chartDayOfWeek" height="70"></canvas>
+      </div>
+    </div>
+
+    <!-- RECENT STREAMS TABLE -->
+    <div class="table-card">
+      <div class="table-header">
+        <h3>🎬 Streams Recientes</h3>
+        <a href="pages/streams.html" class="see-all">Ver todos →</a>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="recentStreamsTable">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Título</th>
+              <th>Categoría</th>
+              <th>Duración</th>
+              <th>Avg Views</th>
+              <th>Peak</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="recentStreamsTbody">
+            <tr><td colspan="7" class="empty-row">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- AUTH MODAL -->
+  <div class="modal-overlay" id="authModal" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>🔗 Conectar con Kick</h2>
+        <button onclick="closeAuthModal()" class="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>Ingresa tus credenciales de la app <strong>KickX</strong> del developer portal de Kick.</p>
+        <label>Client ID</label>
+        <input type="text" id="inputClientId" placeholder="Pega tu Client ID aquí..." />
+        <label>Client Secret</label>
+        <input type="password" id="inputClientSecret" placeholder="Pega tu Client Secret aquí..." />
+        <label>Tu usuario de Kick</label>
+        <input type="text" id="inputUsername" placeholder="iglitchoff" value="iglitchoff" />
+        <div class="modal-note">
+          ⚠️ <strong>Redirect URL en tu app de Kick:</strong> Pon exactamente <code id="redirectUrlDisplay"></code>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeAuthModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveCredentials()">Guardar y Conectar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OAUTH CALLBACK HANDLER -->
+  <div class="modal-overlay" id="callbackModal" style="display:none">
+    <div class="modal">
+      <div class="modal-header"><h2>✅ Autenticando...</h2></div>
+      <div class="modal-body"><p id="callbackMsg">Procesando token de Kick...</p></div>
+    </div>
+  </div>
+
+  <script src="js/db.js"></script>
+  <script src="js/kick-api.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

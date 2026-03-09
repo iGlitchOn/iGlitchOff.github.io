@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Viewers · iglitchoff KickStats</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-avatar">IG</div>
+      <div class="logo-info"><span class="logo-name">iglitchoff</span><span class="logo-platform">kick.com</span></div>
+    </div>
+    <ul class="nav-links">
+      <li><a href="../index.html"><span>📊</span> Dashboard</a></li>
+      <li><a href="streams.html"><span>🎬</span> Streams</a></li>
+      <li><a href="followers.html"><span>👥</span> Seguidores</a></li>
+      <li><a href="viewers.html" class="active"><span>👁</span> Viewers</a></li>
+      <li><a href="schedule.html"><span>🗓</span> Horario</a></li>
+      <li><a href="stream-detail.html"><span>📈</span> Por Stream</a></li>
+    </ul>
+    <div class="sidebar-footer"><div class="last-sync">—</div></div>
+  </nav>
+
+  <main class="main-content">
+    <header class="page-header">
+      <div class="header-left">
+        <h1 class="page-title">👁 Análisis de Viewers</h1>
+        <p class="page-subtitle">Tendencias de audiencia por período</p>
+      </div>
+      <div class="header-right">
+        <select class="period-select" id="periodSel" onchange="render()">
+          <option value="7">7 días</option>
+          <option value="30" selected>30 días</option>
+          <option value="90">90 días</option>
+          <option value="365">1 año</option>
+          <option value="all">Todo</option>
+        </select>
+      </div>
+    </header>
+
+    <!-- Stat Cards -->
+    <div class="stats-grid" style="margin-bottom:24px">
+      <div class="stat-card"><div class="sc-icon">🏆</div><div class="sc-body"><div class="sc-val" id="vPeakAll">—</div><div class="sc-lab">Peak All-Time</div></div></div>
+      <div class="stat-card"><div class="sc-icon">👁</div><div class="sc-body"><div class="sc-val" id="vAvg">—</div><div class="sc-lab">Avg Viewers</div></div></div>
+      <div class="stat-card"><div class="sc-icon">📈</div><div class="sc-body"><div class="sc-val" id="vTrend">—</div><div class="sc-lab">Tendencia</div><div class="sc-delta" id="vTrendDelta"></div></div></div>
+      <div class="stat-card"><div class="sc-icon">⭐</div><div class="sc-body"><div class="sc-val" id="vBestStream">—</div><div class="sc-lab">Mejor Stream</div></div></div>
+    </div>
+
+    <!-- Peak trend over time -->
+    <div class="chart-card chart-full" style="margin-bottom:20px">
+      <div class="chart-header">
+        <h3>📈 Viewers en el Tiempo (Peak por Stream)</h3>
+        <div class="chart-tabs">
+          <button class="ct-btn active" onclick="setMetric('peak',this)">Peak</button>
+          <button class="ct-btn" onclick="setMetric('avg',this)">Promedio</button>
+        </div>
+      </div>
+      <canvas id="chartViewerTrend" height="90"></canvas>
+    </div>
+
+    <div class="charts-row">
+      <!-- Distribution histogram -->
+      <div class="chart-card chart-medium">
+        <div class="chart-header"><h3>📊 Distribución de Viewers</h3></div>
+        <canvas id="chartDistribution" height="120"></canvas>
+      </div>
+      <!-- Viewers vs Duration scatter-like -->
+      <div class="chart-card chart-medium">
+        <div class="chart-header"><h3>⏱ Viewers vs Duración</h3></div>
+        <canvas id="chartVsDuration" height="120"></canvas>
+      </div>
+    </div>
+
+    <!-- Top streams by viewers -->
+    <div class="table-card">
+      <div class="table-header"><h3>🏆 Top Streams por Viewers</h3></div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>#</th><th>Fecha</th><th>Título</th><th>Categoría</th><th>Peak</th><th>Avg</th><th>Duración</th></tr></thead>
+          <tbody id="topStreamsTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <div class="alert-banner" id="alertBanner" style="display:none"><span id="alertMsg"></span><button onclick="document.getElementById('alertBanner').style.display='none'">✕</button></div>
+
+  <script src="../js/db.js"></script>
+  <script src="../js/kick-api.js"></script>
+  <script src="../js/charts.js"></script>
+  <script>
+    let allStreams = [];
+    let metric = 'peak';
+
+    async function init() {
+      await KickDB.open();
+      allStreams = await KickDB.getAllStreams();
+      render();
+    }
+
+    function getFiltered() {
+      const p = document.getElementById('periodSel')?.value || '30';
+      const start = getPeriodStart(p);
+      return allStreams.filter(s => new Date(s.startedAt) >= start);
+    }
+
+    function render() {
+      const streams = getFiltered();
+      if (!streams.length) return;
+
+      const sorted = streams.slice().reverse();
+      const peakAll = Math.max(...allStreams.map(s => s.peakViewers || 0));
+      const avg = streams.length ? Math.round(streams.reduce((a, s) => a + (s.avgViewers || s.peakViewers || 0), 0) / streams.length) : 0;
+      const half = Math.floor(streams.length / 2);
+      const firstHalf = streams.slice(half);
+      const secondHalf = streams.slice(0, half);
+      const avgFirst = firstHalf.length ? firstHalf.reduce((a, s) => a + (s.peakViewers || 0), 0) / firstHalf.length : 0;
+      const avgSecond = secondHalf.length ? secondHalf.reduce((a, s) => a + (s.peakViewers || 0), 0) / secondHalf.length : 0;
+      const trend = avgSecond - avgFirst;
+      const bestStream = [...streams].sort((a, b) => (b.peakViewers || 0) - (a.peakViewers || 0))[0];
+
+      setText('vPeakAll', fmtNum(peakAll));
+      setText('vAvg', fmtNum(avg));
+      setText('vTrend', trend >= 0 ? '↑ Subiendo' : '↓ Bajando');
+      document.getElementById('vTrendDelta').textContent = (trend >= 0 ? '+' : '') + trend.toFixed(1) + ' viewers';
+      document.getElementById('vTrendDelta').className = 'sc-delta ' + (trend >= 0 ? 'pos' : 'neg');
+      setText('vBestStream', fmtDate(bestStream?.startedAt));
+
+      buildTrendChart(sorted);
+      buildDistChart(streams);
+      buildVsDurChart(streams);
+      renderTopTable(streams);
+    }
+
+    function setMetric(m, btn) {
+      metric = m;
+      document.querySelectorAll('.ct-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      render();
+    }
+
+    function buildTrendChart(sorted) {
+      KickCharts.destroyChart('chartViewerTrend');
+      const ctx = document.getElementById('chartViewerTrend')?.getContext('2d');
+      if (!ctx) return;
+      const data = sorted.map(s => ({ x: s.startedAt, y: metric === 'peak' ? (s.peakViewers || 0) : (s.avgViewers || 0) }));
+      // Moving average
+      const ma = data.map((d, i) => {
+        const window = data.slice(Math.max(0, i - 4), i + 1);
+        return { x: d.x, y: Math.round(window.reduce((a, b) => a + b.y, 0) / window.length) };
+      });
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: [
+            { label: metric === 'peak' ? 'Peak' : 'Avg', data, borderColor: '#53FC18', backgroundColor: 'rgba(83,252,24,0.1)', fill: true, tension: 0.2, pointRadius: data.length > 30 ? 0 : 3, borderWidth: 2 },
+            { label: 'Media móvil (5)', data: ma, borderColor: '#4488FF', borderDash: [5, 3], pointRadius: 0, borderWidth: 1.5, fill: false }
+          ]
+        },
+        options: { responsive: true, scales: { x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'dd MMM' } }, grid: { color: '#1e1e1e' } }, y: { grid: { color: '#1e1e1e' }, beginAtZero: true } }, plugins: { legend: { labels: { color: '#888' } }, tooltip: { backgroundColor: '#111', borderColor: '#333', borderWidth: 1 } } }
+      });
+    }
+
+    function buildDistChart(streams) {
+      KickCharts.destroyChart('chartDistribution');
+      const ctx = document.getElementById('chartDistribution')?.getContext('2d');
+      if (!ctx) return;
+      const values = streams.map(s => s.peakViewers || 0);
+      const max = Math.max(...values);
+      const bucketSize = Math.max(1, Math.ceil(max / 10));
+      const buckets = new Array(10).fill(0);
+      values.forEach(v => { const bi = Math.min(9, Math.floor(v / bucketSize)); buckets[bi]++; });
+      const labels = Array.from({ length: 10 }, (_, i) => `${i * bucketSize}–${(i + 1) * bucketSize}`);
+      new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [{ label: 'Streams', data: buckets, backgroundColor: 'rgba(83,252,24,0.7)', borderRadius: 3 }] },
+        options: { responsive: true, scales: { x: { grid: { color: '#1e1e1e' }, ticks: { maxRotation: 45 } }, y: { grid: { color: '#1e1e1e' }, beginAtZero: true } }, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#111', borderColor: '#333', borderWidth: 1 } } }
+      });
+    }
+
+    function buildVsDurChart(streams) {
+      KickCharts.destroyChart('chartVsDuration');
+      const ctx = document.getElementById('chartVsDuration')?.getContext('2d');
+      if (!ctx) return;
+      const data = streams.filter(s => s.duration && s.peakViewers).map(s => ({ x: +(s.duration / 3600).toFixed(2), y: s.peakViewers }));
+      new Chart(ctx, {
+        type: 'scatter',
+        data: { datasets: [{ label: 'Streams', data, backgroundColor: 'rgba(83,252,24,0.6)', pointRadius: 5, pointHoverRadius: 7 }] },
+        options: { responsive: true, scales: { x: { grid: { color: '#1e1e1e' }, title: { display: true, text: 'Duración (horas)', color: '#888' } }, y: { grid: { color: '#1e1e1e' }, title: { display: true, text: 'Peak Viewers', color: '#888' }, beginAtZero: true } }, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#111', borderColor: '#333', borderWidth: 1, callbacks: { label: ctx => `${ctx.parsed.x.toFixed(1)}h → ${ctx.parsed.y} viewers` } } } }
+      });
+    }
+
+    function renderTopTable(streams) {
+      const top = [...streams].sort((a, b) => (b.peakViewers || 0) - (a.peakViewers || 0)).slice(0, 15);
+      document.getElementById('topStreamsTbody').innerHTML = top.map((s, i) => `
+        <tr>
+          <td style="color:${i < 3 ? 'var(--yellow)' : 'var(--muted)'};font-weight:700">${i < 3 ? ['🥇','🥈','🥉'][i] : i + 1}</td>
+          <td>${fmtDateTime(s.startedAt)}</td>
+          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.title || '—'}</td>
+          <td><span class="badge badge-green">${s.category || '—'}</span></td>
+          <td style="font-weight:800;color:var(--green);font-family:var(--mono)">${fmtNum(s.peakViewers || 0)}</td>
+          <td>${fmtNum(s.avgViewers || 0)}</td>
+          <td>${fmtDur(s.duration)}</td>
+        </tr>`).join('');
+    }
+
+    function setText(id, v) { const el = document.getElementById(id); if(el) el.textContent = v; }
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Stream · iglitchoff KickStats</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-avatar">IG</div>
+      <div class="logo-info"><span class="logo-name">iglitchoff</span><span class="logo-platform">kick.com</span></div>
+    </div>
+    <ul class="nav-links">
+      <li><a href="../index.html"><span>📊</span> Dashboard</a></li>
+      <li><a href="streams.html"><span>🎬</span> Streams</a></li>
+      <li><a href="followers.html"><span>👥</span> Seguidores</a></li>
+      <li><a href="viewers.html"><span>👁</span> Viewers</a></li>
+      <li><a href="schedule.html"><span>🗓</span> Horario</a></li>
+      <li><a href="stream-detail.html" class="active"><span>📈</span> Por Stream</a></li>
+    </ul>
+    <div class="sidebar-footer"><div class="last-sync">—</div></div>
+  </nav>
+
+  <main class="main-content">
+    <!-- Stream selector -->
+    <div style="margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <h1 class="page-title">📈 Detalle de Stream</h1>
+      <select class="period-select" id="streamSelector" onchange="loadStream(this.value)" style="flex:1;max-width:500px">
+        <option value="">Selecciona un stream...</option>
+      </select>
+      <a href="streams.html" style="color:var(--muted);font-size:13px">← Todos</a>
+    </div>
+
+    <!-- Stream not selected -->
+    <div id="emptyState" style="text-align:center;padding:60px;color:var(--muted)">
+      <div style="font-size:48px;margin-bottom:12px">📺</div>
+      <p>Selecciona un stream de la lista para ver sus estadísticas detalladas.</p>
+      <p style="font-size:12px;margin-top:8px">Los gráficos de viewers en tiempo real se capturan mientras estás en vivo.</p>
+    </div>
+
+    <!-- Stream detail content -->
+    <div id="streamDetail" style="display:none">
+
+      <!-- TVTOP-style header card -->
+      <div class="chart-tvtop" id="tvtopCard">
+        <div class="chart-tvtop-header">
+          <div>
+            <div id="sdTitle" style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px">—</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <span class="badge badge-green" id="sdCategory">—</span>
+              <span style="font-size:12px;color:var(--muted)" id="sdDate">—</span>
+            </div>
+          </div>
+          <div class="tvtop-metrics">
+            <div class="tvtop-metric">
+              <div class="tvtop-metric-val media" id="sdAvg">—</div>
+              <div class="tvtop-metric-lab">👁 Audiencia Media</div>
+            </div>
+            <div class="tvtop-metric">
+              <div class="tvtop-metric-val max" id="sdPeak">—</div>
+              <div class="tvtop-metric-lab">🔥 Audiencia Máx.</div>
+            </div>
+            <div class="tvtop-metric">
+              <div class="tvtop-metric-val horas" id="sdHours">—</div>
+              <div class="tvtop-metric-lab">⏱ Duración</div>
+            </div>
+          </div>
+        </div>
+        <!-- Viewer timeline chart (TVTOP style) -->
+        <canvas id="chartStreamTimeline" height="120"></canvas>
+        <div class="tvtop-footer-bar" id="sdFooterBar">— VIEWERS</div>
+      </div>
+
+      <!-- Stat grid -->
+      <div class="stream-info-grid">
+        <div class="stat-card"><div class="sc-icon">👁</div><div class="sc-body"><div class="sc-val" id="sdAvg2">—</div><div class="sc-lab">Avg Viewers</div></div></div>
+        <div class="stat-card"><div class="sc-icon">🏆</div><div class="sc-body"><div class="sc-val" id="sdPeak2">—</div><div class="sc-lab">Peak Viewers</div></div></div>
+        <div class="stat-card"><div class="sc-icon">⏱</div><div class="sc-body"><div class="sc-val" id="sdDur">—</div><div class="sc-lab">Duración</div></div></div>
+        <div class="stat-card"><div class="sc-icon">🕐</div><div class="sc-body"><div class="sc-val" id="sdStart">—</div><div class="sc-lab">Inicio</div></div></div>
+        <div class="stat-card"><div class="sc-icon">🕕</div><div class="sc-body"><div class="sc-val" id="sdEnd">—</div><div class="sc-lab">Fin</div></div></div>
+        <div class="stat-card"><div class="sc-icon">📊</div><div class="sc-body"><div class="sc-val" id="sdSnapshots">—</div><div class="sc-lab">Muestras</div></div></div>
+      </div>
+
+      <!-- Viewer breakdown chart -->
+      <div class="chart-card chart-full" style="margin-bottom:20px" id="timelineChartCard">
+        <div class="chart-header">
+          <h3>📊 Distribución de Viewers</h3>
+          <div style="font-size:12px;color:var(--muted)" id="snapshotNote"></div>
+        </div>
+        <canvas id="chartStreamDist" height="100"></canvas>
+      </div>
+
+      <!-- Navigation -->
+      <div style="display:flex;gap:12px;margin-bottom:20px">
+        <button class="btn-refresh" onclick="navStream(-1)">← Anterior</button>
+        <button class="btn-refresh" onclick="navStream(1)">Siguiente →</button>
+        <button class="btn-refresh" onclick="generateTVTOPImage()">📸 Capturar imagen</button>
+      </div>
+    </div>
+  </main>
+
+  <div class="alert-banner" id="alertBanner" style="display:none"><span id="alertMsg"></span><button onclick="document.getElementById('alertBanner').style.display='none'">✕</button></div>
+
+  <script src="../js/db.js"></script>
+  <script src="../js/kick-api.js"></script>
+  <script src="../js/charts.js"></script>
+  <script>
+    let allStreams = [];
+    let currentIdx = 0;
+
+    async function init() {
+      await KickDB.open();
+      allStreams = await KickDB.getAllStreams();
+
+      const sel = document.getElementById('streamSelector');
+      allStreams.forEach((s, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `${fmtDateTime(s.startedAt)} – ${s.title || 'Sin título'} (${fmtDur(s.duration)})`;
+        sel.appendChild(opt);
+      });
+
+      // Check URL param
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      if (id) {
+        const idx = allStreams.findIndex(s => String(s.id) === id || String(s.kickId) === id);
+        if (idx >= 0) { sel.value = idx; loadStream(idx); }
+      }
+    }
+
+    async function loadStream(idx) {
+      if (idx === '' || idx == null) return;
+      currentIdx = Number(idx);
+      const stream = allStreams[currentIdx];
+      if (!stream) return;
+
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('streamDetail').style.display = 'block';
+
+      // Set info
+      setText('sdTitle', stream.title || 'Sin título');
+      setText('sdCategory', stream.category || '—');
+      setText('sdDate', fmtDateTime(stream.startedAt));
+      setText('sdAvg', fmtNum(stream.avgViewers || stream.peakViewers || 0));
+      setText('sdPeak', fmtNum(stream.peakViewers || 0));
+      setText('sdHours', fmtDur(stream.duration));
+      setText('sdAvg2', fmtNum(stream.avgViewers || 0));
+      setText('sdPeak2', fmtNum(stream.peakViewers || 0));
+      setText('sdDur', fmtDur(stream.duration));
+      setText('sdStart', stream.startedAt ? new Date(stream.startedAt).toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'}) : '—');
+      setText('sdEnd', stream.endedAt ? new Date(stream.endedAt).toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'}) : '—');
+
+      const footerBar = document.getElementById('sdFooterBar');
+      if (footerBar) footerBar.textContent = `${fmtNum(stream.avgViewers || stream.peakViewers || 0)} USUARIOS`;
+
+      // Load viewer snapshots
+      const snapshots = await KickDB.getViewerSnapshots(stream.kickId || String(stream.id));
+      setText('sdSnapshots', snapshots.length);
+
+      if (snapshots.length > 1) {
+        const avgV = Math.round(snapshots.reduce((a, b) => a + b.viewers, 0) / snapshots.length);
+        setText('sdAvg', fmtNum(avgV));
+        setText('sdAvg2', fmtNum(avgV));
+        if (footerBar) footerBar.textContent = `${fmtNum(avgV)} USUARIOS`;
+        document.getElementById('snapshotNote').textContent = `${snapshots.length} muestras`;
+
+        KickCharts.buildStreamViewerTimeline('chartStreamTimeline', snapshots, stream);
+        buildDistChart(snapshots);
+      } else {
+        // No snapshots – generate synthetic from duration
+        const synth = generateSyntheticSnapshots(stream);
+        setText('snapshotNote', '* Datos estimados (sin muestras en vivo)');
+        if (synth.length) {
+          KickCharts.buildStreamViewerTimeline('chartStreamTimeline', synth, stream);
+          buildDistChart(synth);
+        }
+      }
+    }
+
+    function generateSyntheticSnapshots(stream) {
+      if (!stream.duration || !stream.startedAt) return [];
+      const peak = stream.peakViewers || 10;
+      const start = new Date(stream.startedAt).getTime();
+      const points = Math.min(50, Math.floor(stream.duration / 60));
+      const snapshots = [];
+      for (let i = 0; i <= points; i++) {
+        const t = i / points;
+        // Bell curve approximation
+        const bell = Math.exp(-Math.pow((t - 0.4) * 3, 2));
+        const noise = 1 + (Math.random() - 0.5) * 0.2;
+        const viewers = Math.max(1, Math.round(peak * bell * noise));
+        snapshots.push({ ts: start + (i / points) * stream.duration * 1000, viewers });
+      }
+      return snapshots;
+    }
+
+    function buildDistChart(snapshots) {
+      KickCharts.destroyChart('chartStreamDist');
+      const ctx = document.getElementById('chartStreamDist')?.getContext('2d');
+      if (!ctx || !snapshots.length) return;
+
+      const values = snapshots.map(s => s.viewers);
+      const maxV = Math.max(...values);
+      const minV = Math.min(...values);
+      const buckets = 10;
+      const size = Math.max(1, Math.ceil((maxV - minV) / buckets));
+      const bins = new Array(buckets).fill(0);
+      values.forEach(v => { const bi = Math.min(buckets - 1, Math.floor((v - minV) / size)); bins[bi]++; });
+      const labels = Array.from({ length: buckets }, (_, i) => `${minV + i * size}–${minV + (i+1) * size}`);
+
+      new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [{ label: 'Tiempo con X viewers', data: bins, backgroundColor: 'rgba(83,252,24,0.7)', borderRadius: 3 }] },
+        options: { responsive: true, scales: { x: { grid: { color: '#1e1e1e' }, ticks: { maxRotation: 45, font: { size: 10 } }}, y: { grid: { color: '#1e1e1e' }, beginAtZero: true, title: { display: true, text: 'Muestras', color: '#888' }}}, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#111', borderColor: '#333', borderWidth: 1 }}}
+      });
+    }
+
+    function navStream(dir) {
+      const newIdx = currentIdx + dir;
+      if (newIdx < 0 || newIdx >= allStreams.length) return;
+      document.getElementById('streamSelector').value = newIdx;
+      loadStream(newIdx);
+    }
+
+    function generateTVTOPImage() {
+      showAlert('Para guardar la imagen: haz clic derecho sobre el gráfico → "Guardar imagen como..."', 'warn');
+    }
+
+    function setText(id, v) { const el = document.getElementById(id); if(el) el.textContent = v; }
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
