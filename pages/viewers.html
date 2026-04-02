@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Viewers · iglitchoff KickStats</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-logo"><div class="logo-avatar">IG</div><div class="logo-info"><span class="logo-name">iglitchoff</span><span class="logo-platform">kick.com</span></div></div>
+  <ul class="nav-links">
+    <li><a href="../index.html"><span>📊</span> Dashboard</a></li>
+    <li><a href="streams.html"><span>🎬</span> Streams</a></li>
+    <li><a href="followers.html"><span>👥</span> Seguidores</a></li>
+    <li><a href="viewers.html" class="active"><span>👁</span> Viewers</a></li>
+    <li><a href="schedule.html"><span>🗓</span> Horario</a></li>
+    <li><a href="stream-detail.html"><span>📈</span> Por Stream</a></li>
+    <li><a href="clips.html"><span>🎞</span> Clips</a></li>
+  </ul>
+  <div class="sidebar-footer"><div class="last-sync">—</div></div>
+</nav>
+<main class="main-content">
+  <header class="page-header">
+    <div class="header-left"><h1 class="page-title">👁 Análisis de Viewers</h1><p class="page-subtitle">Tendencias de audiencia</p></div>
+    <div class="header-right">
+      <select class="period-select" id="periodSel" onchange="render()">
+        <option value="7">7 días</option><option value="30" selected>30 días</option><option value="90">90 días</option><option value="all">Todo</option>
+      </select>
+    </div>
+  </header>
+  <div class="alert-banner" id="alertBanner" style="display:none"><span id="alertMsg"></span><button onclick="this.parentElement.style.display='none'">✕</button></div>
+
+  <div class="stats-grid" style="margin-bottom:24px">
+    <div class="stat-card"><div class="sc-icon">🏆</div><div class="sc-body"><div class="sc-val" id="vPeak">—</div><div class="sc-lab">Peak All-Time</div></div></div>
+    <div class="stat-card"><div class="sc-icon">👁</div><div class="sc-body"><div class="sc-val" id="vAvg">—</div><div class="sc-lab">Avg Viewers</div></div></div>
+    <div class="stat-card"><div class="sc-icon">📈</div><div class="sc-body"><div class="sc-val" id="vTrend">—</div><div class="sc-lab">Tendencia</div><div class="sc-delta" id="vDelta"></div></div></div>
+    <div class="stat-card"><div class="sc-icon">⭐</div><div class="sc-body"><div class="sc-val" id="vBest">—</div><div class="sc-lab">Mejor Stream</div></div></div>
+  </div>
+
+  <div class="chart-card chart-full" style="margin-bottom:20px">
+    <div class="chart-header"><h3>📈 Tendencia de Viewers</h3>
+      <div class="chart-tabs"><button class="ct-btn active" onclick="setMetric('peak',this)">Peak</button><button class="ct-btn" onclick="setMetric('avg',this)">Promedio</button></div>
+    </div>
+    <canvas id="chartTrend" height="90"></canvas>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card chart-medium"><div class="chart-header"><h3>📊 Distribución</h3></div><canvas id="chartDist" height="120"></canvas></div>
+    <div class="chart-card chart-medium"><div class="chart-header"><h3>⏱ Viewers vs Duración</h3></div><canvas id="chartScatter" height="120"></canvas></div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-header"><h3>🏆 Top Streams por Viewers</h3></div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>#</th><th>Fecha</th><th>Título</th><th>Categoría</th><th>Peak</th><th>Avg</th><th>Duración</th></tr></thead>
+        <tbody id="topTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+<script src="../js/db.js"></script>
+<script src="../js/kick-api.js"></script>
+<script src="../js/charts.js"></script>
+<script>
+let allStreams=[], metric='peak';
+async function init() { await KickDB.open(); allStreams=await KickDB.getAllStreams(); render(); }
+function getFiltered() { const p=document.getElementById('periodSel')?.value||'30'; return allStreams.filter(s=>new Date(s.startedAt)>=getPeriodStart(p)); }
+function render() {
+  const ss=getFiltered(); if(!ss.length) return;
+  const sorted=ss.slice().reverse();
+  const peakAll=Math.max(...allStreams.map(s=>s.peakViewers||0));
+  const avg=Math.round(ss.reduce((a,s)=>a+(s.peakViewers||0),0)/ss.length);
+  const half=Math.floor(ss.length/2);
+  const a1=half?ss.slice(half).reduce((a,s)=>a+(s.peakViewers||0),0)/half:0;
+  const a2=half?ss.slice(0,half).reduce((a,s)=>a+(s.peakViewers||0),0)/half:0;
+  const trend=a2-a1;
+  const best=[...ss].sort((a,b)=>(b.peakViewers||0)-(a.peakViewers||0))[0];
+  set('vPeak',fmtNum(peakAll)); set('vAvg',fmtNum(avg));
+  set('vTrend',trend>=0?'↑ Subiendo':'↓ Bajando');
+  const el=document.getElementById('vDelta'); if(el){el.textContent=(trend>=0?'+':'')+trend.toFixed(1)+' viewers';el.className='sc-delta '+(trend>=0?'pos':'neg');}
+  set('vBest',fmtDate(best?.startedAt));
+  KickCharts.buildViewerTrendChart('chartTrend',sorted,metric);
+  KickCharts.buildDistributionChart('chartDist',ss);
+  KickCharts.buildScatterChart('chartScatter',ss);
+  document.getElementById('topTbody').innerHTML=[...ss].sort((a,b)=>(b.peakViewers||0)-(a.peakViewers||0)).slice(0,15).map((s,i)=>`<tr>
+    <td style="color:${i<3?'var(--yellow)':'var(--muted)'};font-weight:700">${i<3?['🥇','🥈','🥉'][i]:i+1}</td>
+    <td>${fmtDateTime(s.startedAt)}</td>
+    <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.title||'—'}</td>
+    <td><span class="badge badge-green">${s.category||'—'}</span></td>
+    <td style="font-weight:800;color:var(--green);font-family:var(--mono)">${fmtNum(s.peakViewers||0)}</td>
+    <td>${fmtNum(s.avgViewers||0)}</td>
+    <td>${fmtDur(s.duration)}</td>
+  </tr>`).join('');
+}
+function setMetric(m,btn) { metric=m; document.querySelectorAll('.ct-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); render(); }
+function set(id,v){const el=document.getElementById(id);if(el)el.textContent=v;}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>

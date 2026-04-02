@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Horario · iglitchoff KickStats</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-logo"><div class="logo-avatar">IG</div><div class="logo-info"><span class="logo-name">iglitchoff</span><span class="logo-platform">kick.com</span></div></div>
+  <ul class="nav-links">
+    <li><a href="../index.html"><span>📊</span> Dashboard</a></li>
+    <li><a href="streams.html"><span>🎬</span> Streams</a></li>
+    <li><a href="followers.html"><span>👥</span> Seguidores</a></li>
+    <li><a href="viewers.html"><span>👁</span> Viewers</a></li>
+    <li><a href="schedule.html" class="active"><span>🗓</span> Horario</a></li>
+    <li><a href="stream-detail.html"><span>📈</span> Por Stream</a></li>
+    <li><a href="clips.html"><span>🎞</span> Clips</a></li>
+  </ul>
+  <div class="sidebar-footer"><div class="last-sync">—</div></div>
+</nav>
+<main class="main-content">
+  <header class="page-header">
+    <div class="header-left"><h1 class="page-title">🗓 Análisis de Horario</h1><p class="page-subtitle">Cuándo y cuánto streameas</p></div>
+  </header>
+  <div class="alert-banner" id="alertBanner" style="display:none"><span id="alertMsg"></span><button onclick="this.parentElement.style.display='none'">✕</button></div>
+
+  <div class="page-section">
+    <div class="section-title">Por Día de la Semana</div>
+    <div class="dow-cards" id="dowCards"></div>
+  </div>
+
+  <div class="chart-card chart-full" style="margin-bottom:20px">
+    <div class="chart-header"><h3>📊 Streams / Viewers / Duración por Día</h3></div>
+    <canvas id="chartDow" height="80"></canvas>
+  </div>
+  <div class="chart-card chart-full" style="margin-bottom:20px">
+    <div class="chart-header"><h3>🕐 Horas de Inicio de Stream</h3></div>
+    <canvas id="chartHours" height="80"></canvas>
+  </div>
+
+  <div class="table-card" style="margin-bottom:20px">
+    <div class="table-header"><h3>🔥 Actividad Semanal (últimas 12 semanas)</h3></div>
+    <div id="heatmapContainer" style="overflow-x:auto;padding:8px 0"></div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card chart-medium"><div class="chart-header"><h3>⭐ Mejores Días (avg viewers)</h3></div><canvas id="chartBestDays" height="130"></canvas></div>
+    <div class="chart-card chart-medium"><div class="chart-header"><h3>📅 Consistencia Semanal</h3></div><canvas id="chartConsistency" height="130"></canvas></div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-header"><h3>Horario Promedio Calculado</h3></div>
+    <div id="scheduleTableWrap"></div>
+  </div>
+</main>
+<script src="../js/db.js"></script>
+<script src="../js/kick-api.js"></script>
+<script src="../js/charts.js"></script>
+<script>
+const DAYS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+async function init() {
+  await KickDB.open();
+  const streams=await KickDB.getAllStreams();
+  renderDowCards(streams);
+  KickCharts.buildDayOfWeekChart('chartDow',streams);
+  KickCharts.buildHourlyChart('chartHours',streams);
+  buildBestDays(streams);
+  KickCharts.buildConsistencyChart('chartConsistency',streams);
+  buildHeatmap(streams);
+  buildScheduleTable(streams);
+}
+function renderDowCards(streams) {
+  const counts=new Array(7).fill(0),viewers=new Array(7).fill(0),durs=new Array(7).fill(0);
+  streams.forEach(s=>{const d=new Date(s.startedAt).getDay();counts[d]++;viewers[d]+=s.peakViewers||0;durs[d]+=s.duration||0;});
+  const maxC=Math.max(...counts);
+  document.getElementById('dowCards').innerHTML=DAYS.map((day,i)=>`
+    <div class="dow-card ${counts[i]>0?'has-data':''}">
+      <div class="dow-name">${day}</div>
+      <div class="dow-count">${counts[i]}</div>
+      <div class="dow-avg" style="color:var(--muted)">streams</div>
+      ${counts[i]>0?`<div class="dow-avg" style="color:var(--green);margin-top:4px">~${Math.round(viewers[i]/counts[i])}v</div><div class="dow-avg">${fmtDur(Math.round(durs[i]/counts[i]))} prom</div>`:''}
+      ${counts[i]===maxC&&maxC>0?'<div style="font-size:10px;color:var(--yellow);margin-top:4px">⭐ Más activo</div>':''}
+    </div>`).join('');
+}
+function buildBestDays(streams) {
+  const avgs=new Array(7).fill(0),counts=new Array(7).fill(0);
+  streams.forEach(s=>{const d=new Date(s.startedAt).getDay();avgs[d]+=s.peakViewers||0;counts[d]++;});
+  const data=avgs.map((v,i)=>counts[i]>0?Math.round(v/counts[i]):0);
+  const ctx=document.getElementById('chartBestDays')?.getContext('2d'); if(!ctx) return;
+  new Chart(ctx,{type:'bar',data:{labels:DAYS,datasets:[{data,backgroundColor:data.map(v=>v===Math.max(...data)?'rgba(255,215,0,.8)':'rgba(83,252,24,.6)'),borderRadius:4}]},options:{responsive:true,scales:{x:{grid:{color:'#1e1e1e'}},y:{grid:{color:'#1e1e1e'},beginAtZero:true}},plugins:{legend:{display:false},tooltip:{backgroundColor:'#111',borderColor:'#333',borderWidth:1,callbacks:{label:c=>`${c.parsed.y} avg viewers`}}}}});
+}
+function buildHeatmap(streams) {
+  const act={};
+  streams.forEach(s=>{const d=s.startedAt?.split('T')[0];if(d)act[d]=(act[d]||0)+1;});
+  const weeks=[], now=new Date();
+  for(let w=11;w>=0;w--){const days=[];for(let d=0;d<7;d++){const dt=new Date(now);dt.setDate(now.getDate()-now.getDay()-w*7+d);const key=dt.toISOString().split('T')[0];days.push({date:key,count:act[key]||0,dt});}weeks.push(days);}
+  const mx=Math.max(...Object.values(act),1), todayStr=new Date().toISOString().split('T')[0];
+  let html=`<div style="display:flex;gap:4px;align-items:flex-start">`;
+  html+=`<div style="display:flex;flex-direction:column;gap:2px;margin-top:24px">`;
+  ['D','L','M','X','J','V','S'].forEach(d=>{html+=`<div style="width:16px;height:14px;font-size:9px;color:var(--muted);text-align:right;padding-right:4px">${d}</div>`;});
+  html+=`</div>`;
+  weeks.forEach(wk=>{
+    html+=`<div style="display:flex;flex-direction:column;gap:2px">`;
+    const fm=wk.find(d=>d.dt.getDate()<=7);
+    html+=`<div style="height:14px;font-size:9px;color:var(--muted);text-align:center">${fm?fm.dt.toLocaleString('es-ES',{month:'short'}):''}</div>`;
+    wk.forEach(day=>{
+      const op=day.count>0?Math.min(1,.15+(day.count/mx)*.85):0;
+      const bg=day.count>0?`rgba(83,252,24,${op.toFixed(2)})`:'rgba(255,255,255,.03)';
+      const border=day.date===todayStr?'1px solid #53FC18':'1px solid transparent';
+      html+=`<div title="${day.date}: ${day.count} stream(s)" style="width:14px;height:14px;border-radius:2px;background:${bg};border:${border}"></div>`;
+    });
+    html+=`</div>`;
+  });
+  html+=`</div>`;
+  document.getElementById('heatmapContainer').innerHTML=html;
+}
+function buildScheduleTable(streams) {
+  const byDay={};
+  streams.forEach(s=>{const dt=new Date(s.startedAt),d=dt.getDay();if(!byDay[d])byDay[d]=[];byDay[d].push({h:dt.getHours(),m:dt.getMinutes(),dur:s.duration||0,v:s.peakViewers||0});});
+  const c=document.getElementById('scheduleTableWrap'); if(!c) return;
+  if(!Object.keys(byDay).length){c.innerHTML='<p style="color:var(--muted);padding:16px">Sin datos suficientes.</p>';return;}
+  c.innerHTML=`<div class="table-wrap"><table class="data-table"><thead><tr><th>Día</th><th>Hora típica</th><th>Duración prom</th><th>Viewers prom</th><th>Frecuencia</th></tr></thead><tbody>${
+    Object.entries(byDay).sort((a,b)=>+a[0]-+b[0]).map(([day,ss])=>{
+      const avgH=Math.round(ss.reduce((a,b)=>a+b.h,0)/ss.length);
+      const avgM=Math.round(ss.reduce((a,b)=>a+b.m,0)/ss.length);
+      const avgD=Math.round(ss.reduce((a,b)=>a+b.dur,0)/ss.length);
+      const avgV=Math.round(ss.reduce((a,b)=>a+b.v,0)/ss.length);
+      return `<tr><td style="font-weight:700;color:var(--green)">${DAYS[day]}</td><td style="font-family:var(--mono)">~${String(avgH).padStart(2,'0')}:${String(avgM).padStart(2,'0')}</td><td style="color:var(--blue)">${fmtDur(avgD)}</td><td style="color:var(--green)">${fmtNum(avgV)}</td><td><span class="badge badge-blue">${ss.length}x</span></td></tr>`;
+    }).join('')
+  }</tbody></table></div>`;
+}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>

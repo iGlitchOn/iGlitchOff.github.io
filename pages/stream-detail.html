@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Por Stream · iglitchoff KickStats</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-logo"><div class="logo-avatar">IG</div><div class="logo-info"><span class="logo-name">iglitchoff</span><span class="logo-platform">kick.com</span></div></div>
+  <ul class="nav-links">
+    <li><a href="../index.html"><span>📊</span> Dashboard</a></li>
+    <li><a href="streams.html"><span>🎬</span> Streams</a></li>
+    <li><a href="followers.html"><span>👥</span> Seguidores</a></li>
+    <li><a href="viewers.html"><span>👁</span> Viewers</a></li>
+    <li><a href="schedule.html"><span>🗓</span> Horario</a></li>
+    <li><a href="stream-detail.html" class="active"><span>📈</span> Por Stream</a></li>
+    <li><a href="clips.html"><span>🎞</span> Clips</a></li>
+  </ul>
+  <div class="sidebar-footer"><div class="last-sync">—</div></div>
+</nav>
+<main class="main-content">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+    <h1 class="page-title">📈 Detalle de Stream</h1>
+    <select class="period-select" id="streamSel" onchange="loadStream(this.value)" style="flex:1;max-width:500px">
+      <option value="">— Selecciona un stream —</option>
+    </select>
+    <button class="btn-refresh" onclick="navStream(-1)">← Anterior</button>
+    <button class="btn-refresh" onclick="navStream(1)">Siguiente →</button>
+  </div>
+  <div class="alert-banner" id="alertBanner" style="display:none"><span id="alertMsg"></span><button onclick="this.parentElement.style.display='none'">✕</button></div>
+
+  <div id="emptyState" style="text-align:center;padding:60px;color:var(--muted)">
+    <div style="font-size:48px;margin-bottom:12px">📺</div>
+    <p>Selecciona un stream para ver su gráfico de viewers.</p>
+    <p style="font-size:12px;margin-top:8px">Los datos en tiempo real se capturan mientras estás en vivo.</p>
+  </div>
+
+  <div id="streamDetail" style="display:none">
+    <!-- TVTOP card -->
+    <div class="chart-tvtop">
+      <div class="chart-tvtop-header">
+        <div>
+          <div id="sdTitle" style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px">—</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <span class="badge badge-green" id="sdCat">—</span>
+            <span style="font-size:12px;color:var(--muted)" id="sdDate">—</span>
+          </div>
+        </div>
+        <div class="tvtop-metrics">
+          <div class="tvtop-metric"><div class="tvtop-metric-val media" id="sdAvg">—</div><div class="tvtop-metric-lab">👁 Audiencia Media</div></div>
+          <div class="tvtop-metric"><div class="tvtop-metric-val max" id="sdPeak">—</div><div class="tvtop-metric-lab">🔥 Máx.</div></div>
+          <div class="tvtop-metric"><div class="tvtop-metric-val horas" id="sdHours">—</div><div class="tvtop-metric-lab">⏱ Duración</div></div>
+        </div>
+      </div>
+      <canvas id="chartTimeline" height="120"></canvas>
+      <div class="tvtop-footer-bar" id="sdFooter">— USUARIOS</div>
+    </div>
+
+    <div class="stream-info-grid">
+      <div class="stat-card"><div class="sc-icon">👁</div><div class="sc-body"><div class="sc-val" id="sdAvg2">—</div><div class="sc-lab">Avg Viewers</div></div></div>
+      <div class="stat-card"><div class="sc-icon">🏆</div><div class="sc-body"><div class="sc-val" id="sdPeak2">—</div><div class="sc-lab">Peak</div></div></div>
+      <div class="stat-card"><div class="sc-icon">⏱</div><div class="sc-body"><div class="sc-val" id="sdDur">—</div><div class="sc-lab">Duración</div></div></div>
+      <div class="stat-card"><div class="sc-icon">🕐</div><div class="sc-body"><div class="sc-val" id="sdStart">—</div><div class="sc-lab">Inicio</div></div></div>
+      <div class="stat-card"><div class="sc-icon">🕕</div><div class="sc-body"><div class="sc-val" id="sdEnd">—</div><div class="sc-lab">Fin</div></div></div>
+      <div class="stat-card"><div class="sc-icon">📊</div><div class="sc-body"><div class="sc-val" id="sdSnaps">—</div><div class="sc-lab">Muestras</div></div></div>
+    </div>
+
+    <div class="chart-card chart-full" style="margin-bottom:20px">
+      <div class="chart-header">
+        <h3>📊 Distribución de Viewers</h3>
+        <div style="font-size:12px;color:var(--muted)" id="snapNote"></div>
+      </div>
+      <canvas id="chartDist" height="100"></canvas>
+    </div>
+  </div>
+</main>
+<script src="../js/db.js"></script>
+<script src="../js/kick-api.js"></script>
+<script src="../js/charts.js"></script>
+<script>
+let allStreams=[], curIdx=0;
+async function init() {
+  await KickDB.open();
+  allStreams=await KickDB.getAllStreams();
+  const sel=document.getElementById('streamSel');
+  allStreams.forEach((s,i)=>{const o=document.createElement('option');o.value=i;o.textContent=`${fmtDateTime(s.startedAt)} – ${s.title||'Sin título'} (${fmtDur(s.duration)})`;sel.appendChild(o);});
+  const p=new URLSearchParams(window.location.search), id=p.get('id');
+  if(id){const idx=allStreams.findIndex(s=>String(s.id)===id||String(s.kickId)===id);if(idx>=0){sel.value=idx;loadStream(idx);}}
+}
+async function loadStream(idx) {
+  if(idx===''||idx==null) return;
+  curIdx=Number(idx);
+  const s=allStreams[curIdx]; if(!s) return;
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('streamDetail').style.display='block';
+  set('sdTitle',s.title||'Sin título'); set('sdCat',s.category||'—');
+  set('sdDate',fmtDateTime(s.startedAt));
+  set('sdAvg',fmtNum(s.avgViewers||s.peakViewers||0)); set('sdPeak',fmtNum(s.peakViewers||0));
+  set('sdHours',fmtDur(s.duration)); set('sdAvg2',fmtNum(s.avgViewers||0));
+  set('sdPeak2',fmtNum(s.peakViewers||0)); set('sdDur',fmtDur(s.duration));
+  set('sdStart',s.startedAt?new Date(s.startedAt).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):'—');
+  set('sdEnd',s.endedAt?new Date(s.endedAt).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):'—');
+  const footer=document.getElementById('sdFooter');
+  if(footer) footer.textContent=`${fmtNum(s.avgViewers||s.peakViewers||0)} USUARIOS`;
+
+  const snaps=await KickDB.getViewerSnapshots(s.kickId||String(s.id));
+  set('sdSnaps',snaps.length);
+  let displaySnaps=snaps;
+  if(snaps.length>1) {
+    const avg=Math.round(snaps.reduce((a,b)=>a+b.viewers,0)/snaps.length);
+    set('sdAvg',fmtNum(avg)); set('sdAvg2',fmtNum(avg));
+    if(footer) footer.textContent=`${fmtNum(avg)} USUARIOS`;
+    set('snapNote',`${snaps.length} muestras en tiempo real`);
+  } else {
+    displaySnaps=synthSnaps(s);
+    set('snapNote','* Curva estimada (stream no monitoreado en vivo)');
+  }
+  KickCharts.buildStreamViewerTimeline('chartTimeline',displaySnaps);
+  buildDist(displaySnaps);
+}
+function synthSnaps(s) {
+  if(!s.duration||!s.startedAt) return [];
+  const peak=s.peakViewers||10, start=new Date(s.startedAt).getTime();
+  const pts=Math.min(60,Math.floor(s.duration/60));
+  return Array.from({length:pts+1},(_,i)=>{
+    const t=i/pts, bell=Math.exp(-Math.pow((t-.4)*3,2));
+    return{ts:start+(i/pts)*s.duration*1000,viewers:Math.max(1,Math.round(peak*bell*(1+(Math.random()-.5)*.15)))};
+  });
+}
+function buildDist(snaps) {
+  KickCharts.destroyChart('chartDist');
+  const ctx=document.getElementById('chartDist')?.getContext('2d'); if(!ctx||!snaps.length) return;
+  const vals=snaps.map(s=>s.viewers), mx=Math.max(...vals), mn=Math.min(...vals);
+  const bs=Math.max(1,Math.ceil((mx-mn)/10)), bins=new Array(10).fill(0);
+  vals.forEach(v=>{const bi=Math.min(9,Math.floor((v-mn)/bs));bins[bi]++;});
+  const labels=Array.from({length:10},(_,i)=>`${mn+i*bs}–${mn+(i+1)*bs}`);
+  new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Tiempo con X viewers',data:bins,backgroundColor:'rgba(83,252,24,.7)',borderRadius:3}]},options:{responsive:true,scales:{x:{grid:{color:'#1e1e1e'},ticks:{maxRotation:45,font:{size:10}}},y:{grid:{color:'#1e1e1e'},beginAtZero:true}},plugins:{legend:{display:false},tooltip:{backgroundColor:'#111',borderColor:'#333',borderWidth:1}}}});
+}
+function navStream(dir) { const ni=curIdx+dir; if(ni<0||ni>=allStreams.length) return; document.getElementById('streamSel').value=ni; loadStream(ni); }
+function set(id,v){const el=document.getElementById(id);if(el)el.textContent=v;}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Streams · iglitchoff KickStats</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-logo"><div class="logo-avatar">IG</div><div class="logo-info"><span class="logo-name">iglitchoff</span><span class="logo-platform">kick.com</span></div></div>
+  <ul class="nav-links">
+    <li><a href="../index.html"><span>📊</span> Dashboard</a></li>
+    <li><a href="streams.html" class="active"><span>🎬</span> Streams</a></li>
+    <li><a href="followers.html"><span>👥</span> Seguidores</a></li>
+    <li><a href="viewers.html"><span>👁</span> Viewers</a></li>
+    <li><a href="schedule.html"><span>🗓</span> Horario</a></li>
+    <li><a href="stream-detail.html"><span>📈</span> Por Stream</a></li>
+    <li><a href="clips.html"><span>🎞</span> Clips</a></li>
+  </ul>
+  <div class="sidebar-footer"><div class="last-sync" id="lastSync">—</div></div>
+</nav>
+<main class="main-content">
+  <header class="page-header">
+    <div class="header-left"><h1 class="page-title">🎬 Historial de Streams</h1><p class="page-subtitle">Todos tus streams registrados</p></div>
+    <div class="header-right"><button class="btn-refresh" onclick="exportCSV()">⬇ CSV</button></div>
+  </header>
+  <div class="alert-banner" id="alertBanner" style="display:none"><span id="alertMsg"></span><button onclick="this.parentElement.style.display='none'">✕</button></div>
+
+  <div class="stats-grid" style="margin-bottom:24px">
+    <div class="stat-card"><div class="sc-icon">🎬</div><div class="sc-body"><div class="sc-val" id="sTot">—</div><div class="sc-lab">Total Streams</div></div></div>
+    <div class="stat-card"><div class="sc-icon">⏱</div><div class="sc-body"><div class="sc-val" id="sTime">—</div><div class="sc-lab">Tiempo Total</div></div></div>
+    <div class="stat-card"><div class="sc-icon">📊</div><div class="sc-body"><div class="sc-val" id="sAvgDur">—</div><div class="sc-lab">Duración Prom</div></div></div>
+    <div class="stat-card"><div class="sc-icon">🏆</div><div class="sc-body"><div class="sc-val" id="sPeak">—</div><div class="sc-lab">Peak All-Time</div></div></div>
+    <div class="stat-card"><div class="sc-icon">👁</div><div class="sc-body"><div class="sc-val" id="sAvg">—</div><div class="sc-lab">Avg Viewers</div></div></div>
+    <div class="stat-card"><div class="sc-icon">📅</div><div class="sc-body"><div class="sc-val" id="sSpw">—</div><div class="sc-lab">Streams/Semana</div></div></div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card chart-full">
+      <div class="chart-header"><h3>📈 Viewers por Stream</h3>
+        <div class="chart-tabs"><button class="ct-btn active" onclick="setVMode('bar',this)">Barras</button><button class="ct-btn" onclick="setVMode('line',this)">Línea</button></div>
+      </div>
+      <canvas id="chartAllViewers" height="80"></canvas>
+    </div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card chart-medium"><div class="chart-header"><h3>⏱ Duración por Stream</h3></div><canvas id="chartAllDur" height="110"></canvas></div>
+    <div class="chart-card chart-medium"><div class="chart-header"><h3>🍕 Categorías</h3></div><canvas id="chartAllCats" height="110"></canvas></div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-header"><h3>Lista completa</h3></div>
+    <div class="filter-bar">
+      <input type="text" id="filterText" placeholder="🔍 Buscar título..." oninput="filterTable()"/>
+      <select id="filterCat" onchange="filterTable()"><option value="">Todas las categorías</option></select>
+      <select id="filterPeriod" onchange="filterTable()">
+        <option value="all">Todo el tiempo</option>
+        <option value="7">7 días</option>
+        <option value="30" selected>30 días</option>
+        <option value="90">90 días</option>
+        <option value="365">1 año</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>#</th><th>Fecha</th><th>Hora</th><th>Título</th><th>Categoría</th><th>Duración</th><th>Peak</th><th>Avg</th><th>Acción</th></tr></thead>
+        <tbody id="streamsTbody"><tr><td colspan="9" class="empty-row">Cargando...</td></tr></tbody>
+      </table>
+    </div>
+    <div style="padding:10px 0;font-size:12px;color:var(--muted);font-family:var(--mono)" id="tableFooter"></div>
+  </div>
+</main>
+
+<script src="../js/db.js"></script>
+<script src="../js/kick-api.js"></script>
+<script src="../js/charts.js"></script>
+<script>
+let allStreams=[];
+async function init() {
+  await KickDB.open();
+  allStreams=await KickDB.getAllStreams();
+  renderSummary(allStreams);
+  const sorted=allStreams.slice().reverse();
+  KickCharts.buildViewerChart('chartAllViewers',sorted.slice(-30));
+  KickCharts.buildDurationChart('chartAllDur',sorted.slice(-30));
+  KickCharts.buildCategoriesChart('chartAllCats',allStreams);
+  const cats=[...new Set(allStreams.map(s=>s.category).filter(Boolean))].sort();
+  const sel=document.getElementById('filterCat');
+  cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
+  filterTable();
+}
+function renderSummary(ss) {
+  const tot=ss.length, totalS=ss.reduce((a,s)=>a+(s.duration||0),0);
+  const avgV=tot?Math.round(ss.reduce((a,s)=>a+(s.peakViewers||0),0)/tot):0;
+  const peak=tot?Math.max(...ss.map(s=>s.peakViewers||0)):0;
+  const wks=tot&&ss[ss.length-1]?.startedAt?Math.max(1,(new Date(ss[0].startedAt)-new Date(ss[ss.length-1].startedAt))/(7*86400000)):1;
+  set('sTot',fmtNum(tot)); set('sTime',fmtDur(totalS)); set('sAvgDur',fmtDur(Math.round(totalS/(tot||1))));
+  set('sPeak',fmtNum(peak)); set('sAvg',fmtNum(avgV)); set('sSpw',(tot/wks).toFixed(1)+'/sem');
+}
+function filterTable() {
+  const q=(document.getElementById('filterText').value||'').toLowerCase();
+  const cat=document.getElementById('filterCat').value;
+  const period=document.getElementById('filterPeriod').value;
+  const start=getPeriodStart(period);
+  const filtered=allStreams.filter(s=>{
+    if(q&&!(s.title||'').toLowerCase().includes(q)) return false;
+    if(cat&&s.category!==cat) return false;
+    if(s.startedAt&&new Date(s.startedAt)<start) return false;
+    return true;
+  });
+  const tb=document.getElementById('streamsTbody');
+  tb.innerHTML=filtered.length?filtered.map((s,i)=>`<tr>
+    <td style="color:var(--muted)">${i+1}</td>
+    <td>${fmtDate(s.startedAt)}</td>
+    <td style="font-family:var(--mono);font-size:11px">${s.startedAt?new Date(s.startedAt).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):'—'}</td>
+    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.title||''}">${s.title||'—'}</td>
+    <td><span class="badge badge-green">${s.category||'—'}</span></td>
+    <td style="color:var(--green);font-weight:700">${fmtDur(s.duration)}</td>
+    <td style="font-weight:800;font-family:var(--mono)">${fmtNum(s.peakViewers||0)}</td>
+    <td>${fmtNum(s.avgViewers||0)}</td>
+    <td><a class="btn-detail" href="stream-detail.html?id=${s.id||s.kickId}">Ver →</a></td>
+  </tr>`).join(''):'<tr><td colspan="9" class="empty-row">Sin resultados.</td></tr>';
+  document.getElementById('tableFooter').textContent=`${filtered.length} de ${allStreams.length} streams`;
+}
+function setVMode(mode,btn) {
+  document.querySelectorAll('.ct-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
+  KickCharts.destroyChart('chartAllViewers');
+  const sorted=allStreams.slice().reverse().slice(-30);
+  const ctx=document.getElementById('chartAllViewers').getContext('2d');
+  new Chart(ctx,{type:mode,data:{labels:sorted.map(s=>fmtDate(s.startedAt)),datasets:[{label:'Peak Viewers',data:sorted.map(s=>s.peakViewers||0),backgroundColor:mode==='bar'?'rgba(83,252,24,.7)':'rgba(83,252,24,.2)',borderColor:'#53FC18',fill:mode==='line',tension:.3,borderRadius:mode==='bar'?4:0,pointRadius:mode==='line'?3:0,borderWidth:2}]},options:{responsive:true,scales:{x:{grid:{color:'#1e1e1e'}},y:{grid:{color:'#1e1e1e'},beginAtZero:true}},plugins:{legend:{display:false}}}});
+}
+function exportCSV() {
+  const rows=[['Fecha','Titulo','Categoria','Duracion_seg','PeakViewers','AvgViewers'],...allStreams.map(s=>[s.startedAt,(s.title||'').replace(/,/g,';'),s.category||'',s.duration||0,s.peakViewers||0,s.avgViewers||0])];
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}));a.download=`streams_${todayStr()}.csv`;a.click();
+}
+function set(id,v){const el=document.getElementById(id);if(el)el.textContent=v;}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>

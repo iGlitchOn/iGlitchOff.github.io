@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Clips · iglitchoff KickStats</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-logo"><div class="logo-avatar">IG</div><div class="logo-info"><span class="logo-name">iglitchoff</span><span class="logo-platform">kick.com</span></div></div>
+  <ul class="nav-links">
+    <li><a href="../index.html"><span>📊</span> Dashboard</a></li>
+    <li><a href="streams.html"><span>🎬</span> Streams</a></li>
+    <li><a href="followers.html"><span>👥</span> Seguidores</a></li>
+    <li><a href="viewers.html"><span>👁</span> Viewers</a></li>
+    <li><a href="schedule.html"><span>🗓</span> Horario</a></li>
+    <li><a href="stream-detail.html"><span>📈</span> Por Stream</a></li>
+    <li><a href="clips.html" class="active"><span>🎞</span> Clips</a></li>
+  </ul>
+  <div class="sidebar-footer"><div class="last-sync">—</div></div>
+</nav>
+<main class="main-content">
+  <header class="page-header">
+    <div class="header-left">
+      <h1 class="page-title">🎞 Clips</h1>
+      <p class="page-subtitle">Clips públicos del canal</p>
+    </div>
+    <div class="header-right">
+      <span style="font-size:12px;color:var(--muted);font-family:var(--mono)" id="clipsCount"></span>
+    </div>
+  </header>
+  <div class="alert-banner" id="alertBanner" style="display:none"><span id="alertMsg"></span><button onclick="this.parentElement.style.display='none'">✕</button></div>
+
+  <div class="clips-grid" id="clipsGrid">
+    <div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--muted)">
+      <div style="width:32px;height:32px;border:2px solid #1e1e1e;border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 16px"></div>
+      Cargando clips...
+    </div>
+  </div>
+</main>
+<script src="../js/db.js"></script>
+<script src="../js/kick-api.js"></script>
+<script>
+async function init() {
+  await KickDB.open();
+  const username=await KickDB.getConfig('username')||'iglitchoff';
+  try {
+    const clips=await KickAPI.getClips(username);
+    const cnt=document.getElementById('clipsCount');
+    if(cnt) cnt.textContent=clips.length?`${clips.length} clips`:'';
+    const grid=document.getElementById('clipsGrid');
+    if(!clips.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--muted)">No se encontraron clips públicos.</div>';return;}
+    grid.innerHTML=clips.map(c=>{
+      const url=`https://kick.com/${username}?clip=${c.clip_id||c.id||''}`;
+      const thumb=c.thumbnail_url||c.thumbnail||'';
+      const title=c.title||c.clip_title||'Sin título';
+      const views=c.view_count||c.views||0;
+      const dur=c.duration||0;
+      const date=c.created_at||c.clip_date||'';
+      return `<a class="clip-card" href="${url}" target="_blank" rel="noopener">
+        <div class="clip-thumb">
+          ${thumb?`<img src="${thumb}" alt="${title}" loading="lazy" onerror="this.parentNode.innerHTML='<div class=clip-thumb-placeholder>🎬</div>'">`:`<div class="clip-thumb-placeholder">🎬</div>`}
+          <div class="clip-play"><div class="clip-play-btn"><svg width="14" height="16" viewBox="0 0 14 16" fill="#000"><path d="M0 0l14 8L0 16V0z"/></svg></div></div>
+        </div>
+        <div class="clip-info">
+          <div class="clip-title">${title}</div>
+          <div class="clip-meta">
+            ${views?`<span>👁 ${fmtNum(views)}</span>`:''}
+            ${dur?`<span>⏱ ${fmtDur(dur)}</span>`:''}
+            ${date?`<span>${fmtDate(date)}</span>`:''}
+          </div>
+        </div>
+      </a>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('clipsGrid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--muted)">Error cargando clips: '+e.message+'</div>';
+  }
+}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
