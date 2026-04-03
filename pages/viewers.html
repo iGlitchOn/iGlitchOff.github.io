@@ -1,102 +1,114 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Viewers · iglitchoff KickStats</title>
-  <link rel="stylesheet" href="../css/style.css"/>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Viewers · iglitchoff</title>
+<link rel="stylesheet" href="../css/style.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 </head>
 <body>
 <nav class="sidebar">
-  <div class="sidebar-logo"><div class="logo-avatar">IG</div><div class="logo-info"><span class="logo-name">iglitchoff</span><span class="logo-platform">kick.com</span></div></div>
-  <ul class="nav-links">
-    <li><a href="../index.html"><span>📊</span> Dashboard</a></li>
-    <li><a href="streams.html"><span>🎬</span> Streams</a></li>
-    <li><a href="followers.html"><span>👥</span> Seguidores</a></li>
-    <li><a href="viewers.html" class="active"><span>👁</span> Viewers</a></li>
-    <li><a href="schedule.html"><span>🗓</span> Horario</a></li>
-    <li><a href="stream-detail.html"><span>📈</span> Por Stream</a></li>
-    <li><a href="clips.html"><span>🎞</span> Clips</a></li>
-  </ul>
-  <div class="sidebar-footer"><div class="last-sync">—</div></div>
+<div class="sb-logo"><div class="sb-avatar">IG</div><div><span class="sb-name">iglitchoff</span><span class="sb-plat">kick.com</span></div></div>
+<span class="sb-section">ANALÍTICAS</span>
+<ul class="nav-links">
+  <li><a href="../index.html"><span class="icon">📊</span> Dashboard</a></li>
+  <li><a href="streams.html"><span class="icon">🎬</span> Streams</a></li>
+  <li><a href="followers.html"><span class="icon">👥</span> Seguidores</a></li>
+  <li><a href="viewers.html" class="active"><span class="icon">👁</span> Viewers</a></li>
+  <li><a href="schedule.html"><span class="icon">🗓</span> Horario</a></li>
+</ul>
+<span class="sb-section">DETALLE</span>
+<ul class="nav-links">
+  <li><a href="stream-detail.html"><span class="icon">📈</span> Por Stream</a></li>
+  <li><a href="clips.html"><span class="icon">🎞</span> Clips</a></li>
+  <li><a href="compare.html"><span class="icon">⚖️</span> Comparar</a></li>
+  <li><a href="monthly.html"><span class="icon">📅</span> Resumen Mensual</a></li>
+</ul>
+<div class="sb-footer"><div class="last-sync">—</div></div>
 </nav>
-<main class="main-content">
-  <header class="page-header">
-    <div class="header-left"><h1 class="page-title">👁 Análisis de Viewers</h1><p class="page-subtitle">Tendencias de audiencia</p></div>
-    <div class="header-right">
-      <select class="period-select" id="periodSel" onchange="render()">
-        <option value="7">7 días</option><option value="30" selected>30 días</option><option value="90">90 días</option><option value="all">Todo</option>
-      </select>
-    </div>
-  </header>
-  <div class="alert-banner" id="alertBanner" style="display:none"><span id="alertMsg"></span><button onclick="this.parentElement.style.display='none'">✕</button></div>
+<main class="main">
+<header class="page-header">
+  <div><h1 class="page-title">👁 Análisis de Viewers</h1>
+  <p class="page-sub">Solo datos reales · N/D = sin datos de la API</p></div>
+  <div class="header-right">
+    <select class="sel" id="pSel" onchange="render()">
+      <option value="all">Todo</option><option value="365">1 año</option>
+      <option value="90">90d</option><option value="30" selected>30d</option><option value="7">7d</option>
+    </select>
+  </div>
+</header>
+<div class="alert" id="alertBanner" style="display:none"><span id="alertMsg"></span><button onclick="this.parentElement.style.display='none'">✕</button></div>
 
-  <div class="stats-grid" style="margin-bottom:24px">
-    <div class="stat-card"><div class="sc-icon">🏆</div><div class="sc-body"><div class="sc-val" id="vPeak">—</div><div class="sc-lab">Peak All-Time</div></div></div>
-    <div class="stat-card"><div class="sc-icon">👁</div><div class="sc-body"><div class="sc-val" id="vAvg">—</div><div class="sc-lab">Avg Viewers</div></div></div>
-    <div class="stat-card"><div class="sc-icon">📈</div><div class="sc-body"><div class="sc-val" id="vTrend">—</div><div class="sc-lab">Tendencia</div><div class="sc-delta" id="vDelta"></div></div></div>
-    <div class="stat-card"><div class="sc-icon">⭐</div><div class="sc-body"><div class="sc-val" id="vBest">—</div><div class="sc-lab">Mejor Stream</div></div></div>
-  </div>
+<div class="stats-grid" style="margin-bottom:20px">
+  <div class="stat-card c-red"><div class="sc-icon">🏆</div><div><div class="sc-val" id="vPeakAll">—</div><div class="sc-lab">Peak All-Time</div><div class="sc-sub" id="vPeakDate" style="font-size:10px;color:var(--muted)"></div></div></div>
+  <div class="stat-card c-blue"><div class="sc-icon">👁</div><div><div class="sc-val" id="vAvg">—</div><div class="sc-lab">Avg Viewers*</div><div class="sc-sub" style="font-size:9px;color:var(--muted)">*streams con datos</div></div></div>
+  <div class="stat-card"><div class="sc-icon">📈</div><div><div class="sc-val" id="vTrend">—</div><div class="sc-lab">Tendencia</div><div class="sc-delta" id="vDelta"></div></div></div>
+  <div class="stat-card c-yellow"><div class="sc-icon">⭐</div><div><div class="sc-val" id="vBest">—</div><div class="sc-lab">Mejor Stream</div><div class="sc-sub" id="vBestDate" style="font-size:10px;color:var(--muted)"></div></div></div>
+  <div class="stat-card"><div class="sc-icon">📊</div><div><div class="sc-val" id="vStreamsWithData">—</div><div class="sc-lab">Streams con datos</div></div></div>
+  <div class="stat-card"><div class="sc-icon">❓</div><div><div class="sc-val" id="vStreamsNoData">—</div><div class="sc-lab">Sin datos viewers</div></div></div>
+</div>
 
-  <div class="chart-card chart-full" style="margin-bottom:20px">
-    <div class="chart-header"><h3>📈 Tendencia de Viewers</h3>
-      <div class="chart-tabs"><button class="ct-btn active" onclick="setMetric('peak',this)">Peak</button><button class="ct-btn" onclick="setMetric('avg',this)">Promedio</button></div>
-    </div>
-    <canvas id="chartTrend" height="90"></canvas>
+<div class="chart-card c-full" style="margin-bottom:18px">
+  <div class="chart-hdr"><h3>📈 Tendencia de Viewers (solo streams con datos reales)</h3>
+    <div class="chart-tabs"><button class="ctab active" onclick="setMetric('peak',this)">Peak</button><button class="ctab" onclick="setMetric('avg',this)">Avg</button></div>
   </div>
-  <div class="charts-row">
-    <div class="chart-card chart-medium"><div class="chart-header"><h3>📊 Distribución</h3></div><canvas id="chartDist" height="120"></canvas></div>
-    <div class="chart-card chart-medium"><div class="chart-header"><h3>⏱ Viewers vs Duración</h3></div><canvas id="chartScatter" height="120"></canvas></div>
-  </div>
-
-  <div class="table-card">
-    <div class="table-header"><h3>🏆 Top Streams por Viewers</h3></div>
-    <div class="table-wrap">
-      <table class="data-table">
-        <thead><tr><th>#</th><th>Fecha</th><th>Título</th><th>Categoría</th><th>Peak</th><th>Avg</th><th>Duración</th></tr></thead>
-        <tbody id="topTbody"></tbody>
-      </table>
-    </div>
-  </div>
+  <canvas id="chartTrend" height="90"></canvas>
+</div>
+<div class="charts-row">
+  <div class="chart-card c-medium"><div class="chart-hdr"><h3>📊 Distribución</h3></div><canvas id="chartDist" height="120"></canvas></div>
+  <div class="chart-card c-medium"><div class="chart-hdr"><h3>⏱ Viewers vs Duración</h3></div><canvas id="chartScat" height="120"></canvas></div>
+</div>
+<div class="tbl-card">
+  <div class="tbl-hdr"><h3>🏆 Top Streams por Peak Viewers</h3></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>#</th><th>Fecha</th><th>Título</th><th>Categoría</th><th>Peak</th><th>Avg</th><th>Duración</th></tr></thead>
+    <tbody id="topTbody"></tbody>
+  </table></div>
+</div>
 </main>
 <script src="../js/db.js"></script>
 <script src="../js/kick-api.js"></script>
 <script src="../js/charts.js"></script>
 <script>
-let allStreams=[], metric='peak';
-async function init() { await KickDB.open(); allStreams=await KickDB.getAllStreams(); render(); }
-function getFiltered() { const p=document.getElementById('periodSel')?.value||'30'; return allStreams.filter(s=>new Date(s.startedAt)>=getPeriodStart(p)); }
+let all=[], metric='peak';
+async function init() { await KickDB.open(); all=await KickDB.getAllStreams(); render(); }
+function getFiltered() { const p=document.getElementById('pSel').value; return p==='all'?all:all.filter(s=>new Date(s.startedAt)>=getPeriodStart(p)); }
 function render() {
-  const ss=getFiltered(); if(!ss.length) return;
-  const sorted=ss.slice().reverse();
-  const peakAll=Math.max(...allStreams.map(s=>s.peakViewers||0));
-  const avg=Math.round(ss.reduce((a,s)=>a+(s.peakViewers||0),0)/ss.length);
-  const half=Math.floor(ss.length/2);
-  const a1=half?ss.slice(half).reduce((a,s)=>a+(s.peakViewers||0),0)/half:0;
-  const a2=half?ss.slice(0,half).reduce((a,s)=>a+(s.peakViewers||0),0)/half:0;
-  const trend=a2-a1;
-  const best=[...ss].sort((a,b)=>(b.peakViewers||0)-(a.peakViewers||0))[0];
-  set('vPeak',fmtNum(peakAll)); set('vAvg',fmtNum(avg));
-  set('vTrend',trend>=0?'↑ Subiendo':'↓ Bajando');
-  const el=document.getElementById('vDelta'); if(el){el.textContent=(trend>=0?'+':'')+trend.toFixed(1)+' viewers';el.className='sc-delta '+(trend>=0?'pos':'neg');}
-  set('vBest',fmtDate(best?.startedAt));
-  KickCharts.buildViewerTrendChart('chartTrend',sorted,metric);
-  KickCharts.buildDistributionChart('chartDist',ss);
-  KickCharts.buildScatterChart('chartScatter',ss);
-  document.getElementById('topTbody').innerHTML=[...ss].sort((a,b)=>(b.peakViewers||0)-(a.peakViewers||0)).slice(0,15).map((s,i)=>`<tr>
+  const ss=getFiltered();
+  const withP=ss.filter(s=>s.peakViewers!=null), withA=ss.filter(s=>s.avgViewers!=null);
+  const peakAll=withP.length?Math.max(...withP.map(s=>s.peakViewers)):null;
+  const peakStream=withP.length?withP.reduce((a,b)=>b.peakViewers>a.peakViewers?b:a,withP[0]):null;
+  const avg=withA.length?Math.round(withA.reduce((a,s)=>a+s.avgViewers,0)/withA.length):null;
+  const half=Math.floor(withP.length/2);
+  const avgOld=half?withP.slice(half).reduce((a,s)=>a+s.peakViewers,0)/half:0;
+  const avgNew=half?withP.slice(0,half).reduce((a,s)=>a+s.peakViewers,0)/half:0;
+  const trend=avgNew-avgOld;
+  const best=peakStream;
+  setText('vPeakAll',peakAll!=null?fmtNum(peakAll):'N/D');
+  setText('vPeakDate',peakStream?fmtDate(peakStream.startedAt):'');
+  setText('vAvg',avg!=null?fmtNum(avg):'N/D');
+  setText('vTrend',withP.length>4?(trend>=0?'↑ Subiendo':'↓ Bajando'):'Sin suficientes datos');
+  const dt=document.getElementById('vDelta');
+  if(dt&&withP.length>4){dt.textContent=(trend>=0?'+':'')+trend.toFixed(1)+' viewers';dt.className='sc-delta '+(trend>=0?'pos':'neg');}
+  setText('vBest',best?fmtNum(best.peakViewers):'N/D');
+  setText('vBestDate',best?fmtDate(best.startedAt):'');
+  setText('vStreamsWithData',withP.length+'/'+ss.length);
+  setText('vStreamsNoData',ss.filter(s=>s.peakViewers==null).length.toString());
+  KickCharts.buildViewerTrendChart('chartTrend',[...withP].reverse(),metric);
+  if(withP.length) KickCharts.buildDistChart('chartDist',withP.map(s=>s.peakViewers),'Streams');
+  KickCharts.buildScatterChart('chartScat',ss);
+  document.getElementById('topTbody').innerHTML=[...ss].filter(s=>s.peakViewers!=null).sort((a,b)=>b.peakViewers-a.peakViewers).slice(0,15).map((s,i)=>`<tr>
     <td style="color:${i<3?'var(--yellow)':'var(--muted)'};font-weight:700">${i<3?['🥇','🥈','🥉'][i]:i+1}</td>
-    <td>${fmtDateTime(s.startedAt)}</td>
+    <td style="font-size:11px">${fmtDateTime(s.startedAt)}</td>
     <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.title||'—'}</td>
-    <td><span class="badge badge-green">${s.category||'—'}</span></td>
-    <td style="font-weight:800;color:var(--green);font-family:var(--mono)">${fmtNum(s.peakViewers||0)}</td>
-    <td>${fmtNum(s.avgViewers||0)}</td>
+    <td><span class="badge bg">${s.category||'—'}</span></td>
+    <td style="font-weight:800;color:var(--green);font-family:var(--mono)">${fmtNum(s.peakViewers)}</td>
+    <td>${s.avgViewers!=null?fmtNum(s.avgViewers):'<span style="color:var(--muted)">N/D</span>'}</td>
     <td>${fmtDur(s.duration)}</td>
   </tr>`).join('');
 }
-function setMetric(m,btn) { metric=m; document.querySelectorAll('.ct-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); render(); }
-function set(id,v){const el=document.getElementById(id);if(el)el.textContent=v;}
+function setMetric(m,btn){metric=m;document.querySelectorAll('.ctab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');render();}
+function setText(id,v){const el=document.getElementById(id);if(el)el.textContent=v;}
 document.addEventListener('DOMContentLoaded',init);
 </script>
-</body>
-</html>
+</body></html>

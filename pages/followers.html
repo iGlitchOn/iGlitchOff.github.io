@@ -2,71 +2,82 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Seguidores · iglitchoff KickStats</title>
+  <title>Seguidores · iglitchoff</title>
   <link rel="stylesheet" href="../css/style.css"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 </head>
 <body>
 <nav class="sidebar">
-  <div class="sidebar-logo"><div class="logo-avatar">IG</div><div class="logo-info"><span class="logo-name">iglitchoff</span><span class="logo-platform">kick.com</span></div></div>
+  <div class="sb-logo"><div class="sb-avatar">IG</div><div><span class="sb-name">iglitchoff</span><span class="sb-plat">kick.com</span></div></div>
+  <span class="sb-section">ANALÍTICAS</span>
   <ul class="nav-links">
-    <li><a href="../index.html"><span>📊</span> Dashboard</a></li>
-    <li><a href="streams.html"><span>🎬</span> Streams</a></li>
-    <li><a href="followers.html" class="active"><span>👥</span> Seguidores</a></li>
-    <li><a href="viewers.html"><span>👁</span> Viewers</a></li>
-    <li><a href="schedule.html"><span>🗓</span> Horario</a></li>
-    <li><a href="stream-detail.html"><span>📈</span> Por Stream</a></li>
-    <li><a href="clips.html"><span>🎞</span> Clips</a></li>
+    <li><a href="../index.html"><span class="icon">📊</span> Dashboard</a></li>
+    <li><a href="streams.html"><span class="icon">🎬</span> Streams</a></li>
+    <li><a href="followers.html" class="active"><span class="icon">👥</span> Seguidores</a></li>
+    <li><a href="viewers.html"><span class="icon">👁</span> Viewers</a></li>
+    <li><a href="schedule.html"><span class="icon">🗓</span> Horario</a></li>
   </ul>
-  <div class="sidebar-footer"><div class="last-sync">—</div></div>
+  <span class="sb-section">DETALLE</span>
+  <ul class="nav-links">
+    <li><a href="stream-detail.html"><span class="icon">📈</span> Por Stream</a></li>
+    <li><a href="clips.html"><span class="icon">🎞</span> Clips</a></li>
+    <li><a href="compare.html"><span class="icon">⚖️</span> Comparar</a></li>
+    <li><a href="monthly.html"><span class="icon">📅</span> Resumen Mensual</a></li>
+  </ul>
+  <div class="sb-footer"><div class="last-sync">—</div></div>
 </nav>
-<main class="main-content">
+<main class="main">
   <header class="page-header">
-    <div class="header-left"><h1 class="page-title">👥 Seguidores</h1><p class="page-subtitle">Crecimiento histórico</p></div>
+    <div><h1 class="page-title">👥 Seguidores</h1><p class="page-sub">Crecimiento histórico día a día</p></div>
     <div class="header-right">
-      <div class="chart-tabs" id="periodTabs">
-        <button class="ct-btn active" onclick="setPeriod('7',this)">7d</button>
-        <button class="ct-btn" onclick="setPeriod('30',this)">30d</button>
-        <button class="ct-btn" onclick="setPeriod('90',this)">90d</button>
-        <button class="ct-btn" onclick="setPeriod('365',this)">1a</button>
-        <button class="ct-btn" onclick="setPeriod('all',this)">Todo</button>
+      <div class="chart-tabs" id="pTabs">
+        <button class="ctab active" onclick="setPeriod('all',this)">Todo</button>
+        <button class="ctab" onclick="setPeriod('365',this)">1 año</button>
+        <button class="ctab" onclick="setPeriod('90',this)">90d</button>
+        <button class="ctab" onclick="setPeriod('30',this)">30d</button>
+        <button class="ctab" onclick="setPeriod('7',this)">7d</button>
       </div>
     </div>
   </header>
-  <div class="alert-banner" id="alertBanner" style="display:none"><span id="alertMsg"></span><button onclick="this.parentElement.style.display='none'">✕</button></div>
+  <div class="alert" id="alertBanner" style="display:none"><span id="alertMsg"></span><button onclick="this.parentElement.style.display='none'">✕</button></div>
 
-  <div class="stats-grid" style="margin-bottom:24px">
-    <div class="stat-card"><div class="sc-icon">👥</div><div class="sc-body"><div class="sc-val" id="fCurr">—</div><div class="sc-lab">Seguidores Actuales</div></div></div>
-    <div class="stat-card"><div class="sc-icon">📈</div><div class="sc-body"><div class="sc-val" id="fG7">—</div><div class="sc-lab">Ganados 7d</div></div></div>
-    <div class="stat-card"><div class="sc-icon">📅</div><div class="sc-body"><div class="sc-val" id="fG30">—</div><div class="sc-lab">Ganados 30d</div></div></div>
-    <div class="stat-card"><div class="sc-icon">📊</div><div class="sc-body"><div class="sc-val" id="fAvg">—</div><div class="sc-lab">Promedio/Día</div></div></div>
-    <div class="stat-card"><div class="sc-icon">🎯</div><div class="sc-body"><div class="sc-val" id="fGoalPct">—</div><div class="sc-lab">Meta 1K</div><div class="goal-bar-wrap"><div class="goal-bar" id="fGoalBar"></div></div></div></div>
-    <div class="stat-card"><div class="sc-icon">🗓</div><div class="sc-body"><div class="sc-val" id="fEta">—</div><div class="sc-lab">ETA Meta 1K</div></div></div>
+  <div class="stats-grid" style="margin-bottom:20px">
+    <div class="stat-card"><div class="sc-icon">👥</div><div><div class="sc-val" id="fCurr">—</div><div class="sc-lab">Seguidores actuales</div></div></div>
+    <div class="stat-card c-blue"><div class="sc-icon">📈</div><div><div class="sc-val" id="fG7">—</div><div class="sc-lab">Ganados 7d</div></div></div>
+    <div class="stat-card"><div class="sc-icon">📅</div><div><div class="sc-val" id="fG30">—</div><div class="sc-lab">Ganados 30d</div></div></div>
+    <div class="stat-card c-orange"><div class="sc-icon">📊</div><div><div class="sc-val" id="fAvg">—</div><div class="sc-lab">Promedio/Día</div></div></div>
+    <div class="stat-card c-yellow"><div class="sc-icon">🎯</div><div><div class="sc-val" id="fGoal">—</div><div class="sc-lab">Meta 1K</div><div class="goal-wrap"><div class="goal-bar" id="fGoalBar"></div></div></div></div>
+    <div class="stat-card c-red"><div class="sc-icon">🗓</div><div><div class="sc-val" id="fEta">—</div><div class="sc-lab">ETA Meta 1K</div></div></div>
   </div>
 
-  <div class="chart-card chart-full" style="margin-bottom:20px">
-    <div class="chart-header"><h3>📈 Crecimiento de Seguidores</h3>
-      <div class="chart-tabs"><button class="ct-btn active" onclick="setGroup('daily',this)">Diario</button><button class="ct-btn" onclick="setGroup('weekly',this)">Semanal</button><button class="ct-btn" onclick="setGroup('monthly',this)">Mensual</button></div>
+  <div class="chart-card c-full" style="margin-bottom:18px">
+    <div class="chart-hdr">
+      <h3>📈 Seguidores en el Tiempo</h3>
+      <div class="chart-tabs" id="gTabs">
+        <button class="ctab active" onclick="setGroup('daily',this)">Diario</button>
+        <button class="ctab" onclick="setGroup('weekly',this)">Semanal</button>
+        <button class="ctab" onclick="setGroup('monthly',this)">Mensual</button>
+      </div>
     </div>
-    <canvas id="chartFollMain" height="90"></canvas>
+    <canvas id="chartFoll" height="90"></canvas>
   </div>
 
   <div class="charts-row">
-    <div class="chart-card chart-medium"><div class="chart-header"><h3>📊 Ganados por Día</h3></div><canvas id="chartGainDay" height="120"></canvas></div>
-    <div class="chart-card chart-medium"><div class="chart-header"><h3>🏆 Hitos</h3></div><canvas id="chartMilestones" height="120"></canvas></div>
+    <div class="chart-card c-medium"><div class="chart-hdr"><h3>📊 Ganados por Día</h3></div><canvas id="chartGain" height="120"></canvas></div>
+    <div class="chart-card c-medium"><div class="chart-hdr"><h3>🏆 Hitos de Seguidores</h3></div><canvas id="chartMs" height="120"></canvas></div>
   </div>
 
-  <div class="page-section">
-    <div class="section-title">Hitos de Seguidores</div>
-    <div class="milestone-cards" id="milestoneCards"></div>
-  </div>
+  <!-- Milestone cards -->
+  <div class="section-hdr"><div class="section-hdr-left"><div class="section-line"></div><div class="section-title">Hitos</div></div></div>
+  <div class="ms-list tbl-card" id="msList"></div>
 
-  <div class="table-card">
-    <div class="table-header"><h3>Historial Diario</h3></div>
-    <div class="table-wrap" style="max-height:400px;overflow-y:auto">
-      <table class="data-table">
-        <thead><tr><th>Fecha</th><th>Seguidores</th><th>Ganados</th><th>Variación %</th></tr></thead>
+  <!-- Full history table -->
+  <div class="tbl-card">
+    <div class="tbl-hdr"><h3>📋 Historial Diario de Seguidores</h3></div>
+    <div class="tbl-wrap" style="max-height:400px;overflow-y:auto">
+      <table>
+        <thead><tr><th>Fecha</th><th>Seguidores</th><th>Ganados ese día</th><th>Var. %</th><th>Total acumulado</th></tr></thead>
         <tbody id="follTbody"></tbody>
       </table>
     </div>
@@ -76,65 +87,74 @@
 <script src="../js/kick-api.js"></script>
 <script src="../js/charts.js"></script>
 <script>
-let allFH=[], curPeriod='7', curGroup='daily';
+let allFH=[], curPeriod='all', curGroup='daily';
 async function init() {
   await KickDB.open();
   allFH=await KickDB.getFollowerHistory();
   render();
 }
-function getFiltered() { if(curPeriod==='all') return allFH; const s=getPeriodStart(curPeriod); return allFH.filter(f=>new Date(f.date)>=s); }
+function getFiltered() { return curPeriod==='all'?allFH:allFH.filter(f=>new Date(f.date)>=getPeriodStart(curPeriod)); }
 function render() {
   const fh=getFiltered(); if(!fh.length) return;
   const curr=fh[fh.length-1].count;
   const s7=allFH.find(f=>new Date(f.date)>=getPeriodStart('7'));
   const s30=allFH.find(f=>new Date(f.date)>=getPeriodStart('30'));
-  const g7=s7?curr-s7.count:0, g30=s30?curr-s30.count:0;
+  const g7=s7?curr-s7.count:0;
+  const g30=s30?curr-s30.count:0;
   const days=fh.length>1?Math.max(1,(new Date(fh[fh.length-1].date)-new Date(fh[0].date))/86400000):1;
   const totalGain=fh.length>1?curr-fh[0].count:0;
-  const avgDay=totalGain>0?(totalGain/days).toFixed(1):0;
+  const avgDay=totalGain>0?(totalGain/days):0;
   const goalPct=Math.min(100,Math.round((curr/1000)*100));
   const remaining=Math.max(0,1000-curr);
-  const eta=avgDay>0?Math.ceil(remaining/avgDay)+' días':'—';
+  const eta=avgDay>0?Math.ceil(remaining/avgDay)+'d':'—';
 
-  set('fCurr',fmtNum(curr)); set('fG7',(g7>=0?'+':'')+fmtNum(g7));
-  set('fG30',(g30>=0?'+':'')+fmtNum(g30));
-  set('fAvg',avgDay>0?'+'+avgDay+'/día':'—');
-  set('fGoalPct',goalPct+'%');
-  const bar=document.getElementById('fGoalBar'); if(bar) bar.style.width=goalPct+'%';
-  set('fEta',eta);
+  setText('fCurr',fmtNum(curr));
+  setText('fG7',(g7>=0?'+':'')+fmtNum(g7));
+  setText('fG30',(g30>=0?'+':'')+fmtNum(g30));
+  setText('fAvg',avgDay>0?'+'+avgDay.toFixed(1)+'/día':'—');
+  setText('fGoal',goalPct+'%');
+  const gb=document.getElementById('fGoalBar'); if(gb) gb.style.width=goalPct+'%';
+  setText('fEta',remaining>0?eta:'🎉 ¡Alcanzada!');
 
-  KickCharts.buildFollowerChart('chartFollMain',fh,curGroup);
-  KickCharts.buildGainDailyChart('chartGainDay',fh);
-  KickCharts.buildMilestoneChart('chartMilestones',curr);
-  renderMilestones(curr);
-  renderTable(fh);
+  KickCharts.buildFollowerChart('chartFoll',fh,curGroup);
+  KickCharts.buildGainChart('chartGain',fh);
+  KickCharts.buildMilestoneChart('chartMs',curr);
+  buildMilestonesHTML(curr);
+  buildFollTable(fh);
 }
-function renderMilestones(curr) {
+function buildMilestonesHTML(curr) {
   const ms=[100,250,500,750,1000,2500,5000,10000];
-  document.getElementById('milestoneCards').innerHTML=ms.map(m=>{
-    const reached=curr>=m, pct=Math.min(100,Math.round((curr/m)*100));
-    return `<div class="milestone ${reached?'reached':''}">
-      <div class="mc-val">${fmtNum(m)}</div><div class="mc-lab">seguidores</div>
-      <div class="mc-status" style="color:${reached?'var(--green)':'var(--muted)'}">${reached?'✅ Alcanzado':`${pct}% (faltan ${fmtNum(m-curr)})`}</div>
-      <div class="goal-bar-wrap" style="margin-top:8px"><div class="goal-bar" style="width:${pct}%"></div></div>
+  const el=document.getElementById('msList'); if(!el) return;
+  el.innerHTML=ms.map(m=>{
+    const done=curr>=m, pct=Math.min(100,Math.round((curr/m)*100));
+    return `<div class="ms-row">
+      <div class="ms-check">${done?'✅':'⬜'}</div>
+      <div class="ms-label">${fmtNum(m)}</div>
+      <div class="ms-bar-bg"><div class="ms-bar-fg ${done?'done':'prog'}" style="width:${pct}%"></div></div>
+      <div class="ms-pct">${pct}%</div>
+      <div style="font-size:10px;color:var(--muted);margin-left:8px">${done?'Alcanzado':'Faltan '+fmtNum(m-curr)}</div>
     </div>`;
   }).join('');
 }
-function renderTable(fh) {
-  const rev=fh.slice().reverse();
-  document.getElementById('follTbody').innerHTML=rev.map((f,i)=>{
-    const prev=rev[i+1], gain=prev?f.count-prev.count:0, pct=prev&&prev.count>0?((gain/prev.count)*100).toFixed(2):'—';
+function buildFollTable(fh) {
+  const rev=[...fh].reverse();
+  const tbody=document.getElementById('follTbody'); if(!tbody) return;
+  tbody.innerHTML=rev.map((f,i)=>{
+    const prev=rev[i+1];
+    const gain=prev?f.count-prev.count:0;
+    const pct=prev&&prev.count>0?((gain/prev.count)*100).toFixed(2):'—';
     return `<tr>
-      <td>${fmtDate(f.date)}</td>
-      <td style="font-weight:700;font-family:var(--mono)">${fmtNum(f.count)}</td>
+      <td style="font-size:11px">${fmtDate(f.date)}</td>
+      <td style="font-family:var(--mono);font-weight:700">${fmtNum(f.count)}</td>
       <td style="color:${gain>=0?'var(--green)':'var(--red)'};font-family:var(--mono)">${gain>=0?'+':''}${fmtNum(gain)}</td>
       <td style="color:${gain>=0?'var(--green)':'var(--red)'};font-size:11px">${pct!=='—'?(gain>=0?'+':'')+pct+'%':'—'}</td>
+      <td style="font-family:var(--mono)">${fmtNum(f.count)}</td>
     </tr>`;
   }).join('');
 }
-function setPeriod(p,btn) { curPeriod=p; document.querySelectorAll('#periodTabs .ct-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); render(); }
-function setGroup(g,btn) { curGroup=g; document.querySelectorAll('.chart-header .ct-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); render(); }
-function set(id,v){const el=document.getElementById(id);if(el)el.textContent=v;}
+function setPeriod(p,btn) { curPeriod=p; document.querySelectorAll('#pTabs .ctab').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); render(); }
+function setGroup(g,btn)  { curGroup=g;  document.querySelectorAll('#gTabs .ctab').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); render(); }
+function setText(id,v){const el=document.getElementById(id);if(el)el.textContent=v;}
 document.addEventListener('DOMContentLoaded',init);
 </script>
 </body>
