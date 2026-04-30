@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stream Snapshot — iglitchoffstats</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Global project styles -->
+  <link rel="stylesheet" href="../assets/css/global.css" />
+
+  <!-- Chart.js v4 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ─── Module-level variables ─────────────────────────────────────────────── */
+    :root {
+      --bg:          #0a0a0f;
+      --surface:     #111118;
+      --surface-2:   #16161f;
+      --accent:      #53fc18;
+      --accent-dim:  rgba(83, 252, 24, 0.12);
+      --accent-glow: rgba(83, 252, 24, 0.35);
+      --text:        #f0f0f0;
+      --text-muted:  #888899;
+      --border:      #2a2a3a;
+      --danger:      #ff4757;
+      --radius:      8px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Rajdhani', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ─── Top nav ────────────────────────────────────────────────────────────── */
+    .topnav {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .kick-logo {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+    }
+
+    .topnav-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      text-transform: uppercase;
+    }
+
+    .topnav-title span {
+      color: var(--accent);
+    }
+
+    .topnav-back {
+      margin-left: auto;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.2s;
+    }
+    .topnav-back:hover { color: var(--accent); }
+
+    /* ─── Live / offline badge ───────────────────────────────────────────────── */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .status-badge.live {
+      background: rgba(83, 252, 24, 0.1);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+    .status-badge.offline {
+      background: rgba(255, 71, 87, 0.1);
+      border: 1px solid var(--danger);
+      color: var(--danger);
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .live .status-dot {
+      animation: pulse-dot 1.4s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.7); }
+    }
+
+    /* ─── Page wrapper ───────────────────────────────────────────────────────── */
+    .page-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      padding: 24px 24px 0;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ─── Stream header ──────────────────────────────────────────────────────── */
+    .stream-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .stream-meta { flex: 1; min-width: 200px; }
+
+    .stream-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+      margin-bottom: 6px;
+      letter-spacing: 0.01em;
+    }
+    .stream-title.skeleton {
+      background: var(--border);
+      color: transparent;
+      border-radius: 4px;
+      animation: shimmer 1.5s infinite;
+    }
+
+    .stream-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .tag {
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .tag.category { color: var(--accent); border-color: var(--accent-glow); }
+    .tag.date     { color: #a0a0c0; }
+
+    /* ─── Offline: stream selector ───────────────────────────────────────────── */
+    .selector-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+    }
+    .selector-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+    .stream-select {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 8px 12px;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .stream-select:focus { border-color: var(--accent); }
+    .stream-select option { background: var(--surface); }
+    .no-streams-msg {
+      display: none;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      padding: 8px 0;
+    }
+
+    /* ─── Main grid (chart + metrics) ───────────────────────────────────────── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 260px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    /* ─── Chart card ─────────────────────────────────────────────────────────── */
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 20px 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* subtle scanline texture */
+    .chart-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent,
+        transparent 2px,
+        rgba(255,255,255,0.012) 2px,
+        rgba(255,255,255,0.012) 4px
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .chart-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .chart-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .chart-peak-pill {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-dim);
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--accent-glow);
+    }
+
+    .chart-container {
+      position: relative;
+      height: 280px;
+      z-index: 1;
+    }
+
+    /* ─── Metrics panel ───────────────────────────────────────────────────────── */
+    .metrics-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .metric-card:hover {
+      border-color: var(--accent-glow);
+      box-shadow: 0 0 16px rgba(83,252,24,0.06);
+    }
+    .metric-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px;
+      height: 100%;
+      background: var(--accent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .metric-card:hover::after { opacity: 1; }
+
+    .metric-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .metric-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+      letter-spacing: -0.01em;
+    }
+    .metric-value.accent { color: var(--accent); }
+
+    .metric-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* ─── Save / refresh controls ─────────────────────────────────────────────── */
+    .controls-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 11px 16px;
+      border-radius: var(--radius);
+      border: none;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 0.92rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0a0a0f;
+    }
+    .btn-primary:hover {
+      background: #70ff3a;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled {
+      background: #2a3a1a;
+      color: #4a5a3a;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover {
+      border-color: var(--accent-glow);
+      color: var(--text);
+    }
+
+    .save-status {
+      font-size: 0.75rem;
+      text-align: center;
+      min-height: 18px;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+    .save-status.ok   { color: var(--accent); }
+    .save-status.err  { color: var(--danger); }
+
+    /* ─── Polling indicator ───────────────────────────────────────────────────── */
+    .poll-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+      margin-top: 4px;
+    }
+    .poll-bar {
+      flex: 1;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .poll-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 1s linear;
+    }
+
+    /* ─── Loading / empty states ──────────────────────────────────────────────── */
+    .state-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      z-index: 10;
+    }
+    .state-overlay.hidden { display: none; }
+    .loader-ring {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .state-text {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+
+    @keyframes shimmer {
+      0%   { opacity: 0.4; }
+      50%  { opacity: 0.8; }
+      100% { opacity: 0.4; }
+    }
+
+    /* ─── Disclaimer ─────────────────────────────────────────────────────────── */
+    .module-footer {
+      padding: 20px 24px;
+      max-width: 1400px;
+      width: 100%;
+      margin: 24px auto 0;
+    }
+
+    /* ─── Responsive ─────────────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+      .metrics-panel {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .page-wrapper { padding: 14px 12px 0; }
+      .topnav { padding: 10px 14px; }
+      .stream-title { font-size: 1.15rem; }
+      .metrics-panel { grid-template-columns: 1fr 1fr; }
+      .metric-value { font-size: 1.6rem; }
+      .chart-container { height: 200px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── Top Nav ─────────────────────────────────────────────────────────── -->
+  <nav class="topnav">
+    <!-- Kick logo SVG (official green K) -->
+    <svg class="kick-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Kick">
+      <rect width="24" height="24" rx="4" fill="#53fc18"/>
+      <path d="M6 4h3v6.5L14.5 4H18l-6 7.5L18 20h-3.5L9 13v7H6V4Z" fill="#0a0a0f"/>
+    </svg>
+    <span class="topnav-title">iglitch<span>off</span>stats</span>
+    <span id="statusBadge" class="status-badge offline" style="margin-left:4px">
+      <span class="status-dot"></span>
+      <span id="statusText">Offline</span>
+    </span>
+    <a href="../index.html" class="topnav-back">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Dashboard
+    </a>
+  </nav>
+
+  <!-- ─── Page Content ─────────────────────────────────────────────────────── -->
+  <main class="page-wrapper">
+
+    <!-- Stream header -->
+    <div class="stream-header">
+      <div class="stream-meta">
+        <div id="streamTitle" class="stream-title skeleton">Cargando stream…</div>
+        <div class="stream-tags">
+          <span id="tagDate"  class="tag date">—</span>
+          <span id="tagCat"   class="tag category">—</span>
+          <span id="tagDur"   class="tag">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Offline: stream selector (hidden while live) -->
+    <div id="selectorBar" class="selector-bar" style="display:none">
+      <span class="selector-label">📂 Stream pasado</span>
+      <select id="streamSelect" class="stream-select">
+        <option value="">Cargando lista…</option>
+      </select>
+      <span id="noStreamsMsg" class="no-streams-msg">Sin archivos guardados aún.</span>
+    </div>
+
+    <!-- Main grid -->
+    <div class="main-grid">
+
+      <!-- Chart card -->
+      <div class="chart-card" style="position:relative">
+        <div id="chartOverlay" class="state-overlay">
+          <div class="loader-ring"></div>
+          <span class="state-text">Conectando con la API…</span>
+        </div>
+
+        <div class="chart-top-row">
+          <span class="chart-label">Espectadores en vivo</span>
+          <span id="peakPill" class="chart-peak-pill" style="display:none">Pico: 0</span>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="viewersChart"></canvas>
+        </div>
+
+        <!-- Polling progress (live only) -->
+        <div id="pollRow" class="poll-indicator" style="margin-top:12px; display:none">
+          <span id="pollLabel">Actualizando en 30s</span>
+          <div class="poll-bar"><div id="pollFill" class="poll-fill"></div></div>
+        </div>
+      </div>
+
+      <!-- Right panel -->
+      <div id="rightPanel">
+        <div class="metrics-panel">
+          <div class="metric-card">
+            <div class="metric-label">Audiencia Media</div>
+            <div id="metAvg" class="metric-value accent">—</div>
+            <div class="metric-sub">espectadores promedio</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Audiencia Máxima</div>
+            <div id="metPeak" class="metric-value">—</div>
+            <div class="metric-sub">espectadores pico</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Horas Vistas</div>
+            <div id="metHV" class="metric-value">—</div>
+            <div class="metric-sub">horas totales</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Duración</div>
+            <div id="metDur" class="metric-value">—</div>
+            <div class="metric-sub">tiempo en vivo</div>
+          </div>
+        </div>
+
+        <!-- Controls (live only) -->
+        <div id="controlsPanel" class="controls-panel" style="margin-top:12px; display:none">
+          <button id="btnSave" class="btn btn-primary">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 2h8l3 3v8H2V2Z" stroke="currentColor" stroke-width="1.4"/><path d="M5 2v4h5V2M4 9h7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            Guardar Snapshot
+          </button>
+          <div id="saveStatus" class="save-status"></div>
+          <button id="btnRefresh" class="btn btn-ghost">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7A6 6 0 1 0 7 1M1 1v6h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Actualizar ahora
+          </button>
+        </div>
+      </div><!-- /rightPanel -->
+
+    </div><!-- /main-grid -->
+  </main>
+
+  <!-- ─── Footer disclaimer ─────────────────────────────────────────────────── -->
+  <footer class="module-footer">
+    <div class="disclaimer-banner">
+      Datos obtenidos en tiempo real desde la Kick API. Ningún dato es falso o simulado.
+    </div>
+  </footer>
+
+  <!-- ─── Module logic ──────────────────────────────────────────────────────── -->
+  <script type="module">
+    import { getLivestream } from '../assets/js/kick-api.js';
+
+    /* ── Constants ────────────────────────────────────────────────── */
+    const CHANNEL      = 'iglitchoff';
+    const POLL_MS      = 30_000;          // 30 segundos
+    const STREAMS_DIR  = '../data/streams/';
+    const MANIFEST_URL = `${STREAMS_DIR}manifest.json`;
+
+    /* ── DOM refs ─────────────────────────────────────────────────── */
+    const $title      = document.getElementById('streamTitle');
+    const $tagDate    = document.getElementById('tagDate');
+    const $tagCat     = document.getElementById('tagCat');
+    const $tagDur     = document.getElementById('tagDur');
+    const $statusBadge= document.getElementById('statusBadge');
+    const $statusText = document.getElementById('statusText');
+    const $selectorBar= document.getElementById('selectorBar');
+    const $streamSel  = document.getElementById('streamSelect');
+    const $overlay    = document.getElementById('chartOverlay');
+    const $peakPill   = document.getElementById('peakPill');
+    const $pollRow    = document.getElementById('pollRow');
+    const $pollFill   = document.getElementById('pollFill');
+    const $pollLabel  = document.getElementById('pollLabel');
+    const $metAvg     = document.getElementById('metAvg');
+    const $metPeak    = document.getElementById('metPeak');
+    const $metHV      = document.getElementById('metHV');
+    const $metDur     = document.getElementById('metDur');
+    const $controls   = document.getElementById('controlsPanel');
+    const $btnSave    = document.getElementById('btnSave');
+    const $saveStatus = document.getElementById('saveStatus');
+    const $btnRefresh = document.getElementById('btnRefresh');
+
+    /* ── State ────────────────────────────────────────────────────── */
+    let chart       = null;
+    let pollTimer   = null;
+    let countdown   = POLL_MS / 1000;
+    let tickTimer   = null;
+    let liveData    = {
+      labels:    [],    // "HH:MM:SS"
+      viewers:   [],    // numbers
+      title:     '',
+      category:  '',
+      startedAt: null,
+    };
+    let isLive      = false;
+
+    /* ── Chart creation ───────────────────────────────────────────── */
+    function buildChart(labels = [], data = []) {
+      const ctx = document.getElementById('viewersChart').getContext('2d');
+
+      // green gradient fill
+      const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+      gradient.addColorStop(0, 'rgba(83,252,24,0.38)');
+      gradient.addColorStop(1, 'rgba(83,252,24,0.00)');
+
+      if (chart) chart.destroy();
+
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Espectadores',
+            data,
+            fill: true,
+            backgroundColor: gradient,
+            borderColor: '#53fc18',
+            borderWidth: 2,
+            pointRadius: data.length <= 60 ? 3 : 0,
+            pointBackgroundColor: '#53fc18',
+            pointBorderColor: '#0a0a0f',
+            pointBorderWidth: 2,
+            tension: 0.35,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#16161f',
+              borderColor: '#2a2a3a',
+              borderWidth: 1,
+              titleColor: '#888899',
+              bodyColor: '#f0f0f0',
+              bodyFont: { family: 'Rajdhani', size: 15, weight: '700' },
+              padding: 12,
+              callbacks: {
+                label: ctx => `  ${ctx.parsed.y.toLocaleString('es-CO')} viewers`,
+              }
+            },
+          },
+          scales: {
+            x: {
+              ticks: {
+                color: '#555568',
+                font: { family: 'Rajdhani', size: 11 },
+                maxTicksLimit: 8,
+                maxRotation: 0,
+              },
+              grid: { color: 'rgba(255,255,255,0.04)' },
+              border: { color: '#2a2a3a' },
+            },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                color: '#555568',
+                font: { family: 'Rajdhani', size: 11 },
+                callback: v => v >= 1000 ? (v/1000).toFixed(1)+'K' : v,
+              },
+              grid: { color: 'rgba(255,255,255,0.04)' },
+              border: { color: '#2a2a3a', dash: [4,4] },
+            }
+          }
+        }
+      });
+    }
+
+    /* ── Metrics helpers ──────────────────────────────────────────── */
+    function fmt(n)    { return n.toLocaleString('es-CO'); }
+    function fmtDur(s) {
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    }
+
+    function updateMetrics(viewers, startedAt) {
+      if (!viewers.length) return;
+      const avg  = Math.round(viewers.reduce((a,b) => a+b, 0) / viewers.length);
+      const peak = Math.max(...viewers);
+      const dur  = startedAt ? Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000) : 0;
+      const hv   = parseFloat(((avg * dur) / 3600).toFixed(1));
+
+      $metAvg.textContent  = fmt(avg);
+      $metPeak.textContent = fmt(peak);
+      $metDur.textContent  = fmtDur(dur);
+      $metHV.textContent   = hv.toLocaleString('es-CO');
+
+      $peakPill.style.display = 'inline-flex';
+      $peakPill.textContent   = `Pico: ${fmt(peak)}`;
+    }
+
+    /* ── Live mode ────────────────────────────────────────────────── */
+    function pushPoint(count) {
+      const now = new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+      liveData.labels.push(now);
+      liveData.viewers.push(count);
+
+      chart.data.labels   = liveData.labels;
+      chart.data.datasets[0].data = liveData.viewers;
+      chart.update('none');
+
+      updateMetrics(liveData.viewers, liveData.startedAt);
+    }
+
+    function startCountdown() {
+      clearInterval(tickTimer);
+      countdown = POLL_MS / 1000;
+      $pollFill.style.width = '0%';
+
+      tickTimer = setInterval(() => {
+        countdown--;
+        const pct = ((POLL_MS / 1000 - countdown) / (POLL_MS / 1000)) * 100;
+        $pollFill.style.width = pct + '%';
+        $pollLabel.textContent = `Actualizando en ${countdown}s`;
+        if (countdown <= 0) clearInterval(tickTimer);
+      }, 1000);
+    }
+
+    async function pollLive() {
+      try {
+        const ls = await getLivestream(CHANNEL);
+        if (!ls || !ls.is_live) return; // went offline
+        const count = ls.viewer_count ?? ls.viewers ?? 0;
+        pushPoint(count);
+      } catch (e) {
+        console.warn('[snapshot] poll error', e);
+      }
+      startCountdown();
+    }
+
+    async function initLive(ls) {
+      isLive = true;
+
+      // badge
+      $statusBadge.className = 'status-badge live';
+      $statusText.textContent = 'En Vivo';
+
+      // header
+      $title.classList.remove('skeleton');
+      liveData.title     = ls.session_title || ls.stream_title || 'Stream sin título';
+      liveData.category  = ls.categories?.[0]?.name || ls.category?.name || '—';
+      liveData.startedAt = ls.created_at || ls.started_at || new Date().toISOString();
+
+      $title.textContent    = liveData.title;
+      $tagDate.textContent  = new Date(liveData.startedAt).toLocaleDateString('es-CO', { day:'2-digit', month:'short', year:'numeric' });
+      $tagCat.textContent   = liveData.category;
+      $tagDur.textContent   = 'En curso';
+
+      // show controls & poll row
+      $controls.style.display = 'flex';
+      $pollRow.style.display  = 'flex';
+
+      // build empty chart then first poll
+      buildChart([], []);
+      hideOverlay();
+      await pollLive();
+
+      pollTimer = setInterval(pollLive, POLL_MS);
+    }
+
+    /* ── Offline mode ─────────────────────────────────────────────── */
+    async function initOffline() {
+      isLive = false;
+      $statusBadge.className = 'status-badge offline';
+      $statusText.textContent = 'Offline';
+
+      $selectorBar.style.display = 'flex';
+
+      // fetch manifest
+      let files = [];
+      try {
+        const r = await fetch(MANIFEST_URL);
+        if (r.ok) files = await r.json();
+      } catch (_) { /* no manifest yet */ }
+
+      $streamSel.innerHTML = '';
+      if (!files.length) {
+        $streamSel.style.display = 'none';
+        document.getElementById('noStreamsMsg').style.display = 'block';
+        $title.classList.remove('skeleton');
+        $title.textContent = 'Sin streams guardados aún';
+        hideOverlay();
+        buildChart([], []);
+        return;
+      }
+
+      files.sort((a,b) => b.localeCompare(a)); // newest first
+      files.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value       = f;
+        opt.textContent = f.replace('.json','').replace('_',' ');
+        $streamSel.appendChild(opt);
+      });
+
+      $streamSel.addEventListener('change', () => loadPastStream($streamSel.value));
+      loadPastStream(files[0]);
+    }
+
+    async function loadPastStream(filename) {
+      if (!filename) return;
+      showOverlay('Cargando stream…');
+
+      try {
+        const r = await fetch(`${STREAMS_DIR}${filename}`);
+        if (!r.ok) throw new Error('not found');
+        const snap = await r.json();
+
+        $title.classList.remove('skeleton');
+        $title.textContent    = snap.title    || 'Stream sin título';
+        $tagDate.textContent  = snap.date      || '—';
+        $tagCat.textContent   = snap.category  || '—';
+        $tagDur.textContent   = snap.duration  ? fmtDur(snap.duration) : '—';
+
+        const labels  = snap.points.map(p => p.time);
+        const viewers = snap.points.map(p => p.count);
+
+        buildChart(labels, viewers);
+        updateMetrics(viewers, null);
+
+        // recalculate duration if available
+        if (snap.duration) {
+          $metDur.textContent = fmtDur(snap.duration);
+        }
+
+        hideOverlay();
+      } catch (e) {
+        console.error('[snapshot] load past stream error', e);
+        hideOverlay();
+        $title.classList.remove('skeleton');
+        $title.textContent = 'Error al cargar el stream';
+      }
+    }
+
+    /* ── Save snapshot ────────────────────────────────────────────── */
+    function buildPayload() {
+      const now    = new Date();
+      const pad    = n => String(n).padStart(2,'0');
+      const fname  = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
+      const dur    = liveData.startedAt ? Math.floor((now - new Date(liveData.startedAt)) / 1000) : 0;
+
+      const payload = {
+        title:    liveData.title,
+        date:     now.toLocaleDateString('es-CO', { day:'2-digit', month:'short', year:'numeric' }),
+        category: liveData.category,
+        duration: dur,
+        savedAt:  now.toISOString(),
+        points:   liveData.labels.map((t, i) => ({ time: t, count: liveData.viewers[i] })),
+      };
+      return { fname, payload };
+    }
+
+    function downloadJSON(fname, payload) {
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `${fname}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function saveSnapshot() {
+      if (!liveData.viewers.length) {
+        $saveStatus.textContent = 'Sin datos para guardar.';
+        $saveStatus.className   = 'save-status err';
+        return;
+      }
+
+      $btnSave.disabled       = true;
+      $saveStatus.className   = 'save-status';
+      $saveStatus.textContent = 'Guardando…';
+
+      const { fname, payload } = buildPayload();
+
+      // Try GitHub Actions dispatch endpoint first
+      const GH_ENDPOINT = ''; // Set via GitHub Actions workflow_dispatch if configured
+      let saved = false;
+
+      if (GH_ENDPOINT) {
+        try {
+          const r = await fetch(GH_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename: `${fname}.json`, content: JSON.stringify(payload, null, 2) }),
+          });
+          if (r.ok) {
+            saved = true;
+            $saveStatus.textContent = `✓ Guardado como ${fname}.json`;
+            $saveStatus.className   = 'save-status ok';
+          }
+        } catch (_) { /* fallback */ }
+      }
+
+      if (!saved) {
+        // Browser download fallback
+        downloadJSON(fname, payload);
+        $saveStatus.textContent = `✓ Descargado: ${fname}.json`;
+        $saveStatus.className   = 'save-status ok';
+      }
+
+      $btnSave.disabled = false;
+    }
+
+    /* ── Overlay helpers ──────────────────────────────────────────── */
+    function showOverlay(msg = 'Cargando…') {
+      $overlay.querySelector('.state-text').textContent = msg;
+      $overlay.classList.remove('hidden');
+    }
+    function hideOverlay() { $overlay.classList.add('hidden'); }
+
+    /* ── Event listeners ──────────────────────────────────────────── */
+    $btnSave.addEventListener('click', saveSnapshot);
+    $btnRefresh.addEventListener('click', async () => {
+      clearInterval(pollTimer);
+      clearInterval(tickTimer);
+      await pollLive();
+      pollTimer = setInterval(pollLive, POLL_MS);
+    });
+
+    /* ── Bootstrap ────────────────────────────────────────────────── */
+    (async function init() {
+      showOverlay('Conectando con la API de Kick…');
+      buildChart([], []);
+
+      try {
+        const ls = await getLivestream(CHANNEL);
+        if (ls && ls.is_live) {
+          await initLive(ls);
+        } else {
+          await initOffline();
+        }
+      } catch (err) {
+        console.error('[snapshot] init error', err);
+        // assume offline on error
+        await initOffline();
+      }
+    })();
+
+    /* ── Cleanup on unload ────────────────────────────────────────── */
+    window.addEventListener('beforeunload', () => {
+      clearInterval(pollTimer);
+      clearInterval(tickTimer);
+    });
+  </script>
+
+</body>
+</html>
