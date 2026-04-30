@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — iglitchoffstats</title>
+
+  <!-- Fuentes del proyecto -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- CSS global del proyecto -->
+  <link rel="stylesheet" href="../assets/css/global.css" />
+
+  <style>
+    /* ── Reseteo base ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Variables locales (heredan del global.css) ───────────────────── */
+    :root {
+      --clr-bg:          #0a0a0f;
+      --clr-surface:     #111118;
+      --clr-kick:        #53fc18;
+      --clr-kick-dim:    rgba(83, 252, 24, 0.12);
+      --clr-kick-glow:   rgba(83, 252, 24, 0.35);
+      --clr-text:        #f0f0f0;
+      --clr-muted:       #888899;
+      --clr-border:      #2a2a3a;
+      --clr-danger:      #ff4757;
+      --clr-danger-dim:  rgba(255, 71, 87, 0.12);
+      --ff-display:      'Rajdhani', sans-serif;
+      --radius-sm:       6px;
+      --radius-md:       12px;
+      --radius-lg:       20px;
+      --transition:      220ms cubic-bezier(.4,0,.2,1);
+    }
+
+    html, body {
+      height: 100%;
+      background-color: var(--clr-bg);
+      color: var(--clr-text);
+      font-family: var(--ff-display);
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Fondo con grid punteada ──────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(circle at 20% 20%, rgba(83,252,24,.04) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(83,252,24,.03) 0%, transparent 45%),
+        repeating-linear-gradient(
+          0deg, transparent, transparent 39px,
+          rgba(255,255,255,.025) 39px, rgba(255,255,255,.025) 40px
+        ),
+        repeating-linear-gradient(
+          90deg, transparent, transparent 39px,
+          rgba(255,255,255,.025) 39px, rgba(255,255,255,.025) 40px
+        );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Layout principal ─────────────────────────────────────────────── */
+    .login-wrapper {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      gap: 1.5rem;
+    }
+
+    /* ── Disclaimer banner (clase del global.css, override visual) ────── */
+    .disclaimer-banner {
+      width: 100%;
+      max-width: 480px;
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-left: 3px solid var(--clr-kick);
+      border-radius: var(--radius-sm);
+      padding: .6rem 1rem;
+      font-size: .8rem;
+      color: var(--clr-muted);
+      text-align: center;
+      letter-spacing: .03em;
+    }
+
+    /* ── Card principal ───────────────────────────────────────────────── */
+    .login-card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(83,252,24,.06),
+        0 24px 64px rgba(0,0,0,.6),
+        0 0 80px rgba(83,252,24,.04);
+      animation: fadeUp .45s cubic-bezier(.4,0,.2,1) both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Header de la card ────────────────────────────────────────────── */
+    .card-header {
+      padding: 2rem 2rem 1.5rem;
+      border-bottom: 1px solid var(--clr-border);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .card-header .logo-mark {
+      width: 44px;
+      height: 44px;
+      background: var(--clr-kick-dim);
+      border: 1px solid rgba(83,252,24,.3);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .card-header .logo-mark svg {
+      width: 26px;
+      height: 26px;
+      fill: var(--clr-kick);
+    }
+
+    .card-header .title-group h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      line-height: 1.2;
+      color: var(--clr-text);
+    }
+
+    .card-header .title-group p {
+      font-size: .82rem;
+      color: var(--clr-muted);
+      margin-top: .2rem;
+      letter-spacing: .03em;
+    }
+
+    /* ── Cuerpo de la card ────────────────────────────────────────────── */
+    .card-body {
+      padding: 1.75rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ── Banner de seguridad ──────────────────────────────────────────── */
+    .security-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: .75rem;
+      background: rgba(83,252,24,.06);
+      border: 1px solid rgba(83,252,24,.18);
+      border-radius: var(--radius-md);
+      padding: .9rem 1rem;
+    }
+
+    .security-banner .icon {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      margin-top: .1rem;
+      color: var(--clr-kick);
+    }
+
+    .security-banner p {
+      font-size: .82rem;
+      line-height: 1.5;
+      color: #c8ffa8;
+      letter-spacing: .02em;
+    }
+
+    .security-banner strong {
+      color: var(--clr-kick);
+      font-weight: 700;
+    }
+
+    /* ── Lista de permisos ────────────────────────────────────────────── */
+    .perms-title {
+      font-size: .72rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--clr-muted);
+      margin-bottom: .5rem;
+    }
+
+    .perms-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: .55rem;
+    }
+
+    .perms-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: .65rem;
+      font-size: .85rem;
+      line-height: 1.4;
+      color: var(--clr-text);
+    }
+
+    .perm-icon {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      margin-top: .1rem;
+      color: var(--clr-kick);
+    }
+
+    .perm-why {
+      display: block;
+      font-size: .75rem;
+      color: var(--clr-muted);
+      margin-top: .1rem;
+    }
+
+    /* ── Separador ────────────────────────────────────────────────────── */
+    .divider {
+      height: 1px;
+      background: var(--clr-border);
+    }
+
+    /* ── Botón principal ──────────────────────────────────────────────── */
+    .btn-kick {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .65rem;
+      width: 100%;
+      padding: .9rem 1.5rem;
+      background: var(--clr-kick);
+      color: #050905;
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: var(--ff-display);
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition:
+        background var(--transition),
+        box-shadow var(--transition),
+        transform var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-kick:hover {
+      background: #6fff2d;
+      box-shadow: 0 0 28px var(--clr-kick-glow), 0 4px 16px rgba(0,0,0,.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-kick:active {
+      transform: translateY(0);
+      box-shadow: 0 0 14px var(--clr-kick-glow);
+    }
+
+    .btn-kick:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn-kick .kick-logo {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .btn-kick .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(5,9,5,.3);
+      border-top-color: #050905;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      display: none;
+    }
+
+    .btn-kick.loading .spinner { display: block; }
+    .btn-kick.loading .btn-text { opacity: .6; }
+    .btn-kick.loading .kick-logo { display: none; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Estado: sesión activa ────────────────────────────────────────── */
+    .session-active {
+      display: none; /* visible vía JS */
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .user-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: var(--clr-kick-dim);
+      border: 1px solid rgba(83,252,24,.2);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.25rem;
+    }
+
+    .user-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid var(--clr-kick);
+      object-fit: cover;
+      background: var(--clr-border);
+      flex-shrink: 0;
+    }
+
+    .user-avatar-placeholder {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid var(--clr-kick);
+      background: #1a2a10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--clr-kick);
+    }
+
+    .user-info .user-name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--clr-text);
+      letter-spacing: .03em;
+    }
+
+    .user-info .user-status {
+      font-size: .78rem;
+      color: var(--clr-kick);
+      letter-spacing: .04em;
+      display: flex;
+      align-items: center;
+      gap: .3rem;
+      margin-top: .15rem;
+    }
+
+    .user-info .user-status::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      background: var(--clr-kick);
+      border-radius: 50%;
+      box-shadow: 0 0 6px var(--clr-kick);
+    }
+
+    /* ── Botones secundarios ──────────────────────────────────────────── */
+    .btn-group {
+      display: flex;
+      gap: .75rem;
+    }
+
+    .btn-dashboard {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      padding: .75rem 1rem;
+      background: var(--clr-kick);
+      color: #050905;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: var(--ff-display);
+      font-size: .9rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background var(--transition), box-shadow var(--transition);
+      text-decoration: none;
+    }
+
+    .btn-dashboard:hover {
+      background: #6fff2d;
+      box-shadow: 0 0 18px var(--clr-kick-glow);
+    }
+
+    .btn-logout {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .4rem;
+      padding: .75rem 1rem;
+      background: transparent;
+      color: var(--clr-danger);
+      border: 1px solid rgba(255,71,87,.35);
+      border-radius: var(--radius-sm);
+      font-family: var(--ff-display);
+      font-size: .85rem;
+      font-weight: 600;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background var(--transition), border-color var(--transition);
+      white-space: nowrap;
+    }
+
+    .btn-logout:hover {
+      background: var(--clr-danger-dim);
+      border-color: var(--clr-danger);
+    }
+
+    /* ── Modo read-only info ──────────────────────────────────────────── */
+    .readonly-info {
+      display: flex;
+      align-items: flex-start;
+      gap: .65rem;
+      font-size: .8rem;
+      color: var(--clr-muted);
+      line-height: 1.5;
+    }
+
+    .readonly-info svg {
+      flex-shrink: 0;
+      width: 14px;
+      height: 14px;
+      margin-top: .15rem;
+      opacity: .7;
+    }
+
+    /* ── Error ────────────────────────────────────────────────────────── */
+    .error-banner {
+      display: none;
+      align-items: flex-start;
+      gap: .65rem;
+      background: var(--clr-danger-dim);
+      border: 1px solid rgba(255,71,87,.3);
+      border-radius: var(--radius-sm);
+      padding: .8rem 1rem;
+      font-size: .82rem;
+      color: #ffb3ba;
+      line-height: 1.5;
+    }
+
+    .error-banner.visible { display: flex; }
+
+    .error-banner svg {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      color: var(--clr-danger);
+      margin-top: .1rem;
+    }
+
+    /* ── Footer de la card ────────────────────────────────────────────── */
+    .card-footer {
+      padding: 1rem 2rem 1.5rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .card-footer a {
+      font-size: .78rem;
+      color: var(--clr-muted);
+      text-decoration: none;
+      letter-spacing: .03em;
+      transition: color var(--transition);
+    }
+
+    .card-footer a:hover { color: var(--clr-kick); }
+
+    /* ── Branding ─────────────────────────────────────────────────────── */
+    .site-brand {
+      font-size: .78rem;
+      color: var(--clr-muted);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .site-brand span { color: var(--clr-kick); }
+
+    /* ── Responsive ───────────────────────────────────────────────────── */
+    @media (max-width: 480px) {
+      .login-card { border-radius: var(--radius-md); }
+      .card-header, .card-body { padding-left: 1.25rem; padding-right: 1.25rem; }
+      .card-footer { padding-left: 1.25rem; padding-right: 1.25rem; }
+      .btn-group { flex-direction: column; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="login-wrapper">
+
+    <!-- Disclaimer obligatorio (global.css) -->
+    <p class="disclaimer-banner">
+      Datos obtenidos en tiempo real desde la Kick API. Ningún dato es falso o simulado.
+    </p>
+
+    <!-- Card principal -->
+    <article class="login-card" role="main">
+
+      <!-- Header -->
+      <header class="card-header">
+        <div class="logo-mark" aria-hidden="true">
+          <!-- Logo de Kick (SVG inline) -->
+          <svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M10 5 L10 55 L22 55 L22 35 L34 55 L50 55 L32 30 L50 5 L34 5 L22 25 L22 5 Z"/>
+          </svg>
+        </div>
+        <div class="title-group">
+          <h1>Conectar con Kick</h1>
+          <p>iglitchoffstats · Autenticación OAuth 2.0 PKCE</p>
+        </div>
+      </header>
+
+      <!-- Cuerpo -->
+      <section class="card-body">
+
+        <!-- Banner de seguridad del token -->
+        <div class="security-banner" role="note" aria-label="Información de seguridad">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          <p>
+            <strong>Tu token se guarda solo en esta pestaña.</strong>
+            Al cerrarla, se elimina automáticamente. Nunca se almacena en disco
+            ni se envía a servidores externos.
+          </p>
+        </div>
+
+        <!-- Permisos solicitados -->
+        <div>
+          <p class="perms-title">Permisos que se solicitarán</p>
+          <ul class="perms-list" aria-label="Lista de permisos OAuth">
+            <li>
+              <svg class="perm-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              <span>
+                <strong>user:read</strong> — Leer perfil público
+                <em class="perm-why">Para mostrar tu nombre y avatar en el dashboard.</em>
+              </span>
+            </li>
+            <li>
+              <svg class="perm-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+                <line x1="7" y1="2" x2="7" y2="22"/>
+                <line x1="17" y1="2" x2="17" y2="22"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <line x1="2" y1="7" x2="7" y2="7"/>
+                <line x1="2" y1="17" x2="7" y2="17"/>
+                <line x1="17" y1="17" x2="22" y2="17"/>
+                <line x1="17" y1="7" x2="22" y2="7"/>
+              </svg>
+              <span>
+                <strong>channel:read</strong> — Leer datos del canal
+                <em class="perm-why">Para acceder a suscriptores, estadísticas y métricas privadas.</em>
+              </span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="divider" aria-hidden="true"></div>
+
+        <!-- Error (oculto por defecto) -->
+        <div class="error-banner" id="errorBanner" role="alert" aria-live="polite">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span id="errorMessage">Error desconocido.</span>
+        </div>
+
+        <!-- Estado: no logueado -->
+        <div id="loginSection">
+          <button class="btn-kick" id="btnLogin" type="button" aria-label="Conectar con Kick">
+            <!-- Logo Kick en el botón -->
+            <svg class="kick-logo" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M10 5 L10 55 L22 55 L22 35 L34 55 L50 55 L32 30 L50 5 L34 5 L22 25 L22 5 Z"/>
+            </svg>
+            <div class="spinner" aria-hidden="true"></div>
+            <span class="btn-text">Conectar con Kick</span>
+          </button>
+
+          <div class="readonly-info" style="margin-top:.85rem;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <span>
+              Sin iniciar sesión el dashboard funciona en
+              <strong style="color:var(--clr-text)">modo read-only</strong>
+              con los datos públicos del canal.
+            </span>
+          </div>
+        </div>
+
+        <!-- Estado: sesión activa -->
+        <div class="session-active" id="sessionSection" aria-label="Sesión activa">
+          <div class="user-card">
+            <div class="user-avatar-placeholder" id="userAvatarPlaceholder" aria-hidden="true">?</div>
+            <img class="user-avatar" id="userAvatar" src="" alt="Avatar de usuario" style="display:none;" />
+            <div class="user-info">
+              <p class="user-name" id="userName">Cargando…</p>
+              <p class="user-status">Sesión activa</p>
+            </div>
+          </div>
+
+          <div class="btn-group">
+            <a class="btn-dashboard" href="../index.html" aria-label="Ir al dashboard">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+              </svg>
+              Ir al Dashboard
+            </a>
+            <button class="btn-logout" id="btnLogout" type="button" aria-label="Cerrar sesión">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+
+      </section><!-- /card-body -->
+
+      <!-- Footer -->
+      <footer class="card-footer">
+        <a href="../index.html">← Volver al dashboard en modo read-only</a>
+      </footer>
+
+    </article><!-- /login-card -->
+
+    <p class="site-brand">iglitch<span>off</span>stats</p>
+
+  </main><!-- /login-wrapper -->
+
+  <!-- ── Script ──────────────────────────────────────────────────────────── -->
+  <script type="module">
+    import {
+      initiateLogin,
+      handleCallback,
+      isLoggedIn,
+      getUser,
+      logout,
+    } from '../assets/js/auth.js';
+
+    // ── Elementos del DOM ──────────────────────────────────────────────────
+    const btnLogin              = document.getElementById('btnLogin');
+    const btnLogout             = document.getElementById('btnLogout');
+    const loginSection          = document.getElementById('loginSection');
+    const sessionSection        = document.getElementById('sessionSection');
+    const userNameEl            = document.getElementById('userName');
+    const userAvatarEl          = document.getElementById('userAvatar');
+    const userAvatarPlaceholder = document.getElementById('userAvatarPlaceholder');
+    const errorBanner           = document.getElementById('errorBanner');
+    const errorMessage          = document.getElementById('errorMessage');
+
+    // ── Utilidades ─────────────────────────────────────────────────────────
+    function showError(msg) {
+      errorMessage.textContent = msg;
+      errorBanner.classList.add('visible');
+    }
+
+    function hideError() {
+      errorBanner.classList.remove('visible');
+    }
+
+    function setLoading(loading) {
+      btnLogin.disabled = loading;
+      btnLogin.classList.toggle('loading', loading);
+    }
+
+    function showSession(user) {
+      loginSection.style.display  = 'none';
+      sessionSection.style.display = 'flex';
+
+      const displayName = user?.slug || user?.username || user?.name || 'Usuario';
+      userNameEl.textContent = displayName;
+
+      // Inicial en el placeholder
+      userAvatarPlaceholder.textContent = displayName.charAt(0).toUpperCase();
+
+      // Avatar (si existe)
+      const avatarUrl = user?.profile_pic || user?.avatar || user?.profile_picture;
+      if (avatarUrl) {
+        userAvatarEl.src = avatarUrl;
+        userAvatarEl.style.display = 'block';
+        userAvatarPlaceholder.style.display = 'none';
+      }
+    }
+
+    // ── Inicialización ─────────────────────────────────────────────────────
+    async function init() {
+      hideError();
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasCode   = urlParams.has('code');
+      const hasError  = urlParams.has('error');
+
+      // 1. Manejar callback OAuth (code en la URL)
+      if (hasCode || hasError) {
+        setLoading(true);
+        const result = await handleCallback(urlParams);
+        setLoading(false);
+
+        if (!result.success) {
+          showError(result.error || 'Error al completar la autenticación.');
+          return;
+        }
+        // Éxito — continuar para mostrar la sesión activa
+      }
+
+      // 2. Mostrar estado según sesión
+      if (isLoggedIn()) {
+        const user = await getUser();
+        showSession(user ?? {});
+      }
+      // Si no hay sesión, loginSection ya está visible por defecto
+    }
+
+    // ── Event listeners ────────────────────────────────────────────────────
+    btnLogin.addEventListener('click', async () => {
+      setLoading(true);
+      hideError();
+      try {
+        await initiateLogin(); // redirige → no retorna normalmente
+      } catch (err) {
+        setLoading(false);
+        showError(`No se pudo iniciar el login: ${err.message}`);
+      }
+    });
+
+    btnLogout.addEventListener('click', () => {
+      logout(); // limpia sessionStorage y redirige a index
+    });
+
+    // ── Arrancar ───────────────────────────────────────────────────────────
+    init();
+  </script>
+
+</body>
+</html>
